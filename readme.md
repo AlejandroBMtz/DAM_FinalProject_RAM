@@ -1,4 +1,4 @@
-# 📱 Lumark
+# 📱 RAM (Red de Apoyo Mutuo)
 
 > .
 
