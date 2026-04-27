@@ -1,43 +1,146 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
+import React, { useState } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  StatusBar,
+  ScrollView,
+  ActivityIndicator,
+  Alert
+} from 'react-native';
 
-// Cuando estés listo para conectar Firebase, descomenta esto:
-// import { auth } from '../../services/firebaseConfig';
-// import { createUserWithEmailAndPassword } from 'firebase/auth';
+// --- Importaciones reales de Firebase ---
+import { auth, db } from '../../services/firebaseConfig';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore'; 
+
+const HABILIDADES_INFORMATICA = [
+  'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño', 
+  'JavaScript', 'Algoritmos', 'React Native', 'Node.js', 
+  'UX/UI', 'Figma', 'Recursión', 'Java', 'Express', 
+  'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave'
+];
 
 const InformacionRegistroScreen = ({ route, navigation }) => {
-  // 1. Recibimos los datos de la pantalla SignUpScreen
-  // Ponemos "|| {}" para evitar un error si entras a la pantalla sin datos
+  // Recibimos los datos de SignUpScreen
   const { nombre, email, password } = route.params || {};
 
-  const finalizarRegistro = async () => {
-    console.log("Intentando crear cuenta para:", email);
-    
-    // Aquí irá tu lógica final:
-    /*
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log("¡Usuario creado!", userCredential.user.uid);
-    } catch (error) {
-      console.log(error);
+  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const toggleSkill = (skill) => {
+    if (selectedSkills.includes(skill)) {
+      setSelectedSkills(selectedSkills.filter((item) => item !== skill));
+    } else {
+      setSelectedSkills([...selectedSkills, skill]);
     }
-    */
   };
 
-  // 2. OBLIGATORIO: Todo componente debe retornar algo visual (JSX)
+  // Traducción amigable de errores de Firebase
+  const getFriendlyError = (code) => {
+    switch (code) {
+      case 'auth/email-already-in-use': return "Este correo ya está registrado.";
+      case 'auth/invalid-email': return "El formato del correo es inválido.";
+      case 'auth/weak-password': return "La contraseña es muy débil.";
+      default: return "Ocurrió un error al registrar. Intenta de nuevo.";
+    }
+  };
+
+  const finalizarRegistro = async () => {
+    // Validación
+    if (selectedSkills.length === 0) {
+      Alert.alert("Atención", "Por favor selecciona al menos una habilidad para compartir.");
+      return;
+    }
+
+    // Protegemos contra datos vacíos en caso de que route.params falle
+    if (!email || !password || !nombre) {
+      Alert.alert("Error", "Faltan datos de registro. Por favor vuelve al paso anterior.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // 1. Creamos el usuario en Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const user = userCredential.user;
+
+      // 2. Guardamos su perfil en Firestore (Colección "users", documento con su UID)
+      await setDoc(doc(db, "users", user.uid), {
+        nombre: nombre.trim(),
+        email: email.trim(),
+        habilidades: selectedSkills,
+        fechaRegistro: new Date().toISOString()
+      });
+
+      // ¡Todo listo! 
+      // No necesitamos un navigation.navigate() aquí porque al crearse la cuenta,
+      // Firebase inicia sesión automáticamente y tu AppNavigator nos moverá al MainNavigator.
+
+    } catch (error) {
+      console.log("Error en Firebase:", error);
+      Alert.alert("Error de Registro", getFriendlyError(error.code));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0D14" />
       
-      <Text style={styles.title}>¡Casi listo!</Text>
-      
-      {/* Mostramos el nombre para comprobar que el dato pasó correctamente */}
-      <Text style={styles.subtitle}>Hola {nombre}, confirma que este es tu correo institucional:</Text>
-      <Text style={styles.emailText}>{email}</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Tus habilidades</Text>
+        <Text style={styles.subtitle}>¿Qué habilidades podrías compartir?</Text>
+      </View>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={finalizarRegistro}>
-        <Text style={styles.primaryButtonText}>Finalizar Registro</Text>
-      </TouchableOpacity>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.categoryTitle}>Informática</Text>
+        
+        <View style={styles.tagsContainer}>
+          {HABILIDADES_INFORMATICA.map((skill, index) => {
+            const isSelected = selectedSkills.includes(skill);
+            
+            return (
+              <TouchableOpacity 
+                key={index} 
+                style={[
+                  styles.tag, 
+                  isSelected ? styles.tagSelected : styles.tagUnselected
+                ]}
+                onPress={() => toggleSkill(skill)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.tagText,
+                  isSelected ? styles.tagTextSelected : styles.tagTextUnselected
+                ]}>
+                  {skill}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={[styles.primaryButton, loading && { opacity: 0.7 }]} 
+          onPress={finalizarRegistro}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Listo</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -46,28 +149,68 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0B0D14', 
-    justifyContent: 'center',
+  },
+  header: {
+    paddingTop: 60,
     paddingHorizontal: 24,
+    marginBottom: 30,
   },
   title: {
     color: '#FFFFFF',
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 8,
   },
   subtitle: {
     color: '#7E8494',
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 10,
   },
-  emailText: {
-    color: '#2563EB',
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
+  categoryTitle: {
+    color: '#7E8494',
     fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 40,
+    fontWeight: '600',
+    marginBottom: 20,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12, 
+  },
+  tag: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  tagUnselected: {
+    backgroundColor: '#1C1F2B', 
+    borderColor: '#2D3243',     
+  },
+  tagSelected: {
+    backgroundColor: 'rgba(67, 56, 202, 0.15)', 
+    borderColor: '#6C63FF',                     
+  },
+  tagText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tagTextUnselected: {
+    color: '#7E8494', 
+  },
+  tagTextSelected: {
+    color: '#8B85FF', 
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 20,
+    backgroundColor: '#0B0D14', 
   },
   primaryButton: {
     backgroundColor: '#2563EB', 
@@ -78,10 +221,9 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });
 
-// 3. OBLIGATORIO: Exportar el componente para que el Navigator lo pueda leer
 export default InformacionRegistroScreen;
