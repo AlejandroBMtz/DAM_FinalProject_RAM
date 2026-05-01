@@ -40,6 +40,7 @@ function HomeStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
+      <Stack.Screen name="myTicket" component={MyTicketsScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="TicketScreen" component={TicketScreen} />
     </Stack.Navigator>

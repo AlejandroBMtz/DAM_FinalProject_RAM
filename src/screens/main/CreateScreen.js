@@ -78,7 +78,7 @@ export default function crear({ route, navigation }) {
       });
       console.log("Éxito");
 
-      navigation.navigate('Inicio', { screen: 'HomeMain' });
+      navigation.navigate('Inicio', { screen: 'myTicket' });
     } catch (error) {
       console.log("Error en Firebase:", error);
       Alert.alert("Error de Registro", error.message || String(error));
