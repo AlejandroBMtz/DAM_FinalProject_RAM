@@ -25,6 +25,7 @@ export default function crear({ route, navigation }) {
   const [desc, setDesc] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [prioridad, setPrioridad] = useState(null);
 
   const HABILIDADES_INFORMATICA = [
     'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño', 
@@ -40,6 +41,14 @@ export default function crear({ route, navigation }) {
       setSelectedSkills([...selectedSkills, skill]);
     }
   };
+
+  const togglePrio = (prio) => {
+    if (prioridad == prio) {
+      setPrioridad(null);
+    } else {
+      setPrioridad(prio);
+    }
+  }
 
   const crearSolicitud = async () => {
 
@@ -64,6 +73,7 @@ export default function crear({ route, navigation }) {
         desc: desc,
         etiquetas: selectedSkills,
         usuario: auth.currentUser.uid,
+        prioridad: prioridad,
         fechaCreacion: new Date().toISOString()
       });
       console.log("Éxito");
@@ -115,6 +125,60 @@ export default function crear({ route, navigation }) {
           }}>
         </TextInput>
 
+        <Text style={styles.categoryTitle}>Prioridad</Text>
+
+        <View style={styles.prioridades}>
+          <TouchableOpacity 
+            style={[
+              styles.tagPrio, 
+              (prioridad == "Alta") ? styles.tagSelected : styles.tagUnselected
+            ]}
+            onPress={() => togglePrio("Alta")}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="alert-circle-sharp" size={24} color="red" />
+            <Text style={[
+              styles.tagText,
+              (prioridad == "Alta") ? styles.tagTextSelected : styles.tagTextUnselected
+            ]}>
+              Alta
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.tagPrio, 
+              (prioridad == "Media") ? styles.tagSelected : styles.tagUnselected
+            ]}
+            onPress={() => togglePrio("Media")}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="alert-circle-sharp" size={24} color="yellow" />
+            <Text style={[
+              styles.tagText,
+              (prioridad == "Media") ? styles.tagTextSelected : styles.tagTextUnselected
+            ]}>
+              Media
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[
+              styles.tagPrio, 
+              (prioridad == "Baja") ? styles.tagSelected : styles.tagUnselected
+            ]}
+            onPress={() => togglePrio("Baja")}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="alert-circle-sharp" size={24} color="green" />
+            <Text style={[
+              styles.tagText,
+              (prioridad == "Baja") ? styles.tagTextSelected : styles.tagTextUnselected
+            ]}>
+              Baja
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.categoryTitle}>Etiquetas (Máx. 3)</Text>
         
@@ -215,6 +279,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
   },
+  tagPrio: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+    height: "100%",
+    width: "30%"
+  },
   tagUnselected: {
     backgroundColor: '#1C1F2B', 
     borderColor: '#2D3243',     
@@ -260,5 +333,10 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "bold"
+  },
+  prioridades: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    height: "7%"
   }
 });
