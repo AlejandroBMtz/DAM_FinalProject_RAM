@@ -80,14 +80,14 @@ export default function FeedScreen() {
   };
 
   const ticketRelevanceComparator = (a, b) => {
+    if (a.prioridad !== b.prioridad) {
+      return a.prioridad - b.prioridad;
+    }
+
     const matchA = getMatchCount(a);
     const matchB = getMatchCount(b);
     if (matchA !== matchB) {
       return matchB - matchA;
-    }
-
-    if (a.prioridad !== b.prioridad) {
-      return a.prioridad - b.prioridad;
     }
 
     const dateA = new Date(a.fechaCreacion).getTime();
