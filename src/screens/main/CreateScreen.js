@@ -131,15 +131,15 @@ export default function crear({ route, navigation }) {
           <TouchableOpacity 
             style={[
               styles.tagPrio, 
-              (prioridad == "Alta") ? styles.tagSelected : styles.tagUnselected
+              (prioridad == 1) ? styles.tagSelected : styles.tagUnselected
             ]}
-            onPress={() => togglePrio("Alta")}
+            onPress={() => togglePrio(1)}
             activeOpacity={0.7}
           >
             <Ionicons name="alert-circle-sharp" size={24} color="red" />
             <Text style={[
               styles.tagText,
-              (prioridad == "Alta") ? styles.tagTextSelected : styles.tagTextUnselected
+              (prioridad == 1) ? styles.tagTextSelected : styles.tagTextUnselected
             ]}>
               Alta
             </Text>
@@ -148,15 +148,15 @@ export default function crear({ route, navigation }) {
           <TouchableOpacity 
             style={[
               styles.tagPrio, 
-              (prioridad == "Media") ? styles.tagSelected : styles.tagUnselected
+              (prioridad == 2) ? styles.tagSelected : styles.tagUnselected
             ]}
-            onPress={() => togglePrio("Media")}
+            onPress={() => togglePrio(2)}
             activeOpacity={0.7}
           >
             <Ionicons name="alert-circle-sharp" size={24} color="yellow" />
             <Text style={[
               styles.tagText,
-              (prioridad == "Media") ? styles.tagTextSelected : styles.tagTextUnselected
+              (prioridad == 2) ? styles.tagTextSelected : styles.tagTextUnselected
             ]}>
               Media
             </Text>
@@ -165,15 +165,15 @@ export default function crear({ route, navigation }) {
           <TouchableOpacity 
             style={[
               styles.tagPrio, 
-              (prioridad == "Baja") ? styles.tagSelected : styles.tagUnselected
+              (prioridad == 3) ? styles.tagSelected : styles.tagUnselected
             ]}
-            onPress={() => togglePrio("Baja")}
+            onPress={() => togglePrio(3)}
             activeOpacity={0.7}
           >
             <Ionicons name="alert-circle-sharp" size={24} color="green" />
             <Text style={[
               styles.tagText,
-              (prioridad == "Baja") ? styles.tagTextSelected : styles.tagTextUnselected
+              (prioridad == 3) ? styles.tagTextSelected : styles.tagTextUnselected
             ]}>
               Baja
             </Text>
