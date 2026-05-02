@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,42 +12,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../services/firebaseConfig';
 
-// Datos de prueba, despues hay que conectarlo con Firebase
-const MOCK_TICKETS = [
-  {
-    id: '1',
-    priority: 'Alta',
-    time: 'Hace 10 min',
-    title: 'Script de Python no itera bien',
-    description: 'Un bucle for me está arrojando IndexError y no encuentro la fuga',
-    tags: ['Python']
-  },
-  {
-    id: '2',
-    priority: 'Alta',
-    time: 'Hace 1 horas',
-    title: 'Error en árbol AVL, no sé cómo rotar los nodos',
-    description: 'Tengo el examen en 2 horas y el nodo se rompe al insertar el 4to elemento. ¡Por favor ayuda!',
-    tags: ['Estructura de Datos', 'Java']
-  },
-  {
-    id: '3',
-    priority: 'Media',
-    time: 'Hace 1 hora',
-    title: 'Problema con dependencias en React Native',
-    description: 'No me compila el proyecto, me sale un error de Gradle que no entiendo. Estoy en la biblioteca.',
-    tags: ['React Native', 'Desarrollo Móvil']
-  },
-  {
-    id: '4',
-    priority: 'Baja',
-    time: 'Hace 2 horas',
-    title: 'Proyecto de diseño UI — necesito feedback',
-    description: 'Busco a alguien que me revise los wireframes de mi proyecto final. Tiene que verse profesional.',
-    tags: ['Diseño']
-  }
-];
 
 const AVAILABLE_TAGS = ['Todas', 'Python', 'Programación', 'Matemáticas', 'Estructura de Datos', 'React Native'];
 
@@ -55,25 +22,139 @@ export default function FeedScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('Todas');
+  const [tickets, setTickets] = useState([]);
+  const [userTags, setUserTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUserTags = async () => {
+    if (!auth.currentUser) {
+      return [];
+    }
+
+    try {
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        return Array.isArray(data.habilidades) ? data.habilidades : [];
+      }
+    } catch (error) {
+      console.log('Error al obtener las habilidades del usuario:', error);
+    }
+
+    return [];
+  };
+
+  const obtenerSolicitudes = async () => {
+    try {
+      const solRef = collection(db, 'solicitudes');
+      const q = query(solRef, where('usuario', '!=', auth.currentUser.uid), orderBy("prioridad"), orderBy("fechaCreacion"));
+      const querySnapshot = await getDocs(q);
+      const results = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setTickets(results);
+    } catch (error) {
+      console.log('Error al obtener solicitudes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const tags = await fetchUserTags();
+      setUserTags(tags);
+      await obtenerSolicitudes();
+    };
+
+    load();
+  }, []);
+
+  const getMatchCount = (ticket) => {
+    if (!Array.isArray(ticket.etiquetas) || ticket.etiquetas.length === 0) {
+      return 0;
+    }
+    return ticket.etiquetas.filter((tag) => userTags.includes(tag)).length;
+  };
+
+  const ticketRelevanceComparator = (a, b) => {
+    const matchA = getMatchCount(a);
+    const matchB = getMatchCount(b);
+    if (matchA !== matchB) {
+      return matchB - matchA;
+    }
+
+    if (a.prioridad !== b.prioridad) {
+      return a.prioridad - b.prioridad;
+    }
+
+    const dateA = new Date(a.fechaCreacion).getTime();
+    const dateB = new Date(b.fechaCreacion).getTime();
+    return dateB - dateA;
+  };
+
+  const tiempoPasado = (tiempo) => {
+    const actual = new Date().getTime();
+    const pasado = new Date(tiempo).getTime();
+    const difSegundos = Math.floor((actual - pasado) / 1000);
+
+    if (difSegundos < 60) return `Hace ${difSegundos} segundos`;
+
+    const difMinutos = Math.floor(difSegundos / 60);
+
+    if (difMinutos < 60) return `Hace ${difMinutos} minutos`;
+
+    const difHoras = Math.floor(difMinutos / 60);
+
+    if (difHoras < 24) return `Hace ${difHoras} horas`;
+
+    const difDias = Math.floor(difHoras / 24);
+
+    return `Hace ${difDias} días`;
+  }
 
   // Logica de filtrado
-  const filteredTickets = MOCK_TICKETS.filter((ticket) => {
-    const matchesSearch = 
-      ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesTag = 
-      selectedTag === 'Todas' || ticket.tags.includes(selectedTag);
+  const filteredTickets = tickets
+    .filter((ticket) => {
+      if (!ticket || !ticket.titulo || !ticket.desc) {
+        return false;
+      }
 
-    return matchesSearch && matchesTag;
-  });
+      const matchesSearch =
+        ticket.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ticket.desc.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesTag =
+        selectedTag === 'Todas' ||
+        (Array.isArray(ticket.etiquetas) && ticket.etiquetas.includes(selectedTag));
+
+      return matchesSearch && matchesTag;
+    })
+    .sort(ticketRelevanceComparator);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'Alta': return '#FF4C4C'; // Rojo
-      case 'Media': return '#FFA500'; // Naranja
-      case 'Baja': return '#00FF7F'; // Verde
+      case 1: 
+        return '#FF4C4C'; // Rojo
+      case 2:
+        return '#FFA500'; // Naranja
+      case 3:
+        return '#00FF7F'; // Verde
       default: return '#888';
+    }
+  };
+
+  const getPriorityText = (priority) => {
+    switch (priority) {
+      case 1: 
+        return "Alta";
+      case 2:
+        return "Media";
+      case 3:
+        return "Baja";
+      default: return '';
     }
   };
 
@@ -85,20 +166,23 @@ export default function FeedScreen() {
     >
       <View style={styles.cardHeader}>
         <View style={styles.priorityBadge}>
-          <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
-            {item.priority}
+          <Text style={[styles.priorityText, { color: getPriorityColor(item.prioridad) }]}>
+            {getPriorityText(item.prioridad)}
           </Text>
         </View>
-        <Text style={styles.timeText}>{item.time}</Text>
+        <Text style={styles.timeText}>{tiempoPasado(item.fechaCreacion)}</Text>
       </View>
       
-      <Text style={styles.cardTitle}>{item.title}</Text>
-      <Text style={styles.cardDescription} numberOfLines={2}>{item.description}</Text>
+      <Text style={styles.cardTitle}>{item.titulo}</Text>
+      <Text style={styles.cardDescription} numberOfLines={2}>{item.desc}</Text>
       
       <View style={styles.tagsContainer}>
-        {item.tags.map((tag, index) => (
+        {item.etiquetas.map((tag, index) => (
           <View key={index} style={styles.cardTag}>
-            <Text style={styles.cardTagText}>{tag}</Text>
+            <Text style={[
+              styles.cardTagText,
+              (userTags.includes(tag)) ? styles.tagTextSelected : styles.tagTextUnselected
+              ]}>{tag}</Text>
           </View>
         ))}
       </View>
@@ -157,7 +241,9 @@ export default function FeedScreen() {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No se encontraron tickets con esos filtros.</Text>
+          <Text style={styles.emptyText}>
+            {loading ? 'Cargando...' : 'No se encontraron tickets con esos filtros.'}
+          </Text>
         }
       />
     </SafeAreaView>
@@ -290,5 +376,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 40,
     fontSize: 16,
-  }
+  },
+  tagTextUnselected: {
+    color: '#7E8494', 
+  },
+  tagTextSelected: {
+    color: '#8B85FF', 
+  },
 });

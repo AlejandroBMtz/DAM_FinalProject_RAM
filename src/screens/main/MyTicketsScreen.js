@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +14,7 @@ export default function tickets() {
   const obtenerSolicitudes = async () => {
     try {
       const solRef = collection(db, 'solicitudes');
-      const q = query(solRef, where('usuario', '==', auth.currentUser.uid));
+      const q = query(solRef, where('usuario', '==', auth.currentUser.uid), orderBy("prioridad"), orderBy("fechaCreacion"));
       const querySnapshot = await getDocs(q);
       const results = querySnapshot.docs.map((doc) => ({
         id: doc.id,
@@ -28,12 +28,47 @@ export default function tickets() {
     }
   };
 
+  const tiempoPasado = (tiempo) => {
+    const actual = new Date().getTime();
+    const pasado = new Date(tiempo).getTime();
+    const difSegundos = Math.floor((actual - pasado) / 1000);
+
+    if (difSegundos < 60) return `Hace ${difSegundos} segundos`;
+
+    const difMinutos = Math.floor(difSegundos / 60);
+
+    if (difMinutos < 60) return `Hace ${difMinutos} minutos`;
+
+    const difHoras = Math.floor(difMinutos / 60);
+
+    if (difHoras < 24) return `Hace ${difHoras} horas`;
+
+    const difDias = Math.floor(difHoras / 24);
+
+    return `Hace ${difDias} días`;
+  }
+
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'Alta': return '#FF4C4C'; // Rojo
-      case 'Media': return '#FFA500'; // Naranja
-      case 'Baja': return '#00FF7F'; // Verde
+      case 1: 
+        return '#FF4C4C'; // Rojo
+      case 2:
+        return '#FFA500'; // Naranja
+      case 3:
+        return '#00FF7F'; // Verde
       default: return '#888';
+    }
+  };
+
+  const getPriorityText = (priority) => {
+    switch (priority) {
+      case 1: 
+        return "Alta";
+      case 2:
+        return "Media";
+      case 3:
+        return "Baja";
+      default: return '';
     }
   };
 
@@ -71,10 +106,10 @@ export default function tickets() {
                   <View style={styles.cardHeader}>
                     <View style={styles.priorityBadge}>
                       <Text style={[styles.priorityText, { color: getPriorityColor(ticket.prioridad) }]}>
-                        {ticket.prioridad}
+                        {getPriorityText(ticket.prioridad)}
                       </Text>
                     </View>
-                    <Text style={styles.timeText}>{ticket.time || "Tiempo"}</Text>
+                    <Text style={styles.timeText}>{tiempoPasado(ticket.fechaCreacion)}</Text>
                   </View>
                   
                   <Text style={styles.cardTitle}>{ticket.titulo}</Text>
