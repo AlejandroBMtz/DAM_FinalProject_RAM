@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../services/firebaseConfig';
+import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
+import { auth, db } from '../../services/firebaseConfig';
 
 export default function TicketScreen({ route }) {
   const navigation = useNavigation();
@@ -98,6 +98,24 @@ export default function TicketScreen({ route }) {
     setSelectedReason(null);
     setReportDetails('');
   };
+
+  const crearConversacion = async () => {
+    
+    try {
+      await addDoc(collection(db, "conversaciones"), {
+        solicitante: ticketData?.usuario,
+        ayudante: auth.currentUser.uid,
+        ultimoMensaje: "Comienza tu conversación",
+        ultimaActividad: new Date().toISOString()
+      });
+      console.log("Éxito");
+
+      navigation.navigate('Mensajes', { contactId: ticketData?.usuario });
+    } catch (error) {
+      console.log("Error en Firebase:", error);
+      Alert.alert("Error de Registro", error.message || String(error));
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -185,7 +203,7 @@ export default function TicketScreen({ route }) {
       <View style={styles.bottomButtonContainer}>
         <TouchableOpacity 
           style={styles.supportButton}
-          onPress={() => navigation.navigate('Mensajes', { contactId: ticketData?.usuario })}
+          onPress={crearConversacion}
         >
           <Text style={styles.supportButtonText}>¡Yo te apoyo!</Text>
         </TouchableOpacity>

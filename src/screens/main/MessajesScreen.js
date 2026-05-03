@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { collection, query, where, getDocs, orderBy, or, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, or, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,17 +64,21 @@ export default function mensajes() {
         orderBy('ultimaActividad')
       );
       const querySnapshot = await getDocs(q);
-      const results = await Promise.all(querySnapshot.docs.map(async (docSnap) => {
-        const data = docSnap.data();
-        const nombre = await getNombre(data.solicitante, data.ayudante);
-        return {
+
+      const unsub = onSnapshot(q, async (querySnapshot) => {
+        const results = await Promise.all(querySnapshot.docs.map(async (docSnap) => {
+          const data = docSnap.data();
+          const nombre = await getNombre(data.solicitante, data.ayudante);
+          return {
           id: docSnap.id,
           nombre,
           ...data,
-        };
-      }));
-      setConversaciones(results);
-      console.log(results);
+          };
+        }));
+        setConversaciones(results);
+        console.log(results);
+      });
+
     } catch (error) {
       console.log('Error al obtener solicitudes:', error);
     } finally {
