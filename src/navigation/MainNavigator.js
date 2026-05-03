@@ -9,6 +9,7 @@ import HomeScreen from '../screens/main/HomeScreen';
 import MyTicketsScreen from '../screens/main/MyTicketsScreen';
 import CreateScreen from '../screens/main/CreateScreen';
 import MessajesScreen from '../screens/main/MessajesScreen';
+import MensajeScreen from '../screens/main/MensajeScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 
 //Importar las pantallas secundarias
@@ -47,6 +48,14 @@ function HomeStackNavigator() {
   );
 }
 
+function MessagesStackNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MensajesMain" component={MessajesScreen} />
+      <Stack.Screen name="MensajeScreen" component={MensajeScreen} />
+    </Stack.Navigator>
+  );
+}
 
 // Custom Tab Bar Animado
 function CustomTabBar({ state, descriptors, navigation }) {
@@ -142,7 +151,7 @@ export default function MainNavigator() {
       <Tab.Screen name="Inicio"   component={HomeStackNavigator} />
       <Tab.Screen name="Tickets"  component={MyTicketsScreen} />
       <Tab.Screen name="Agregar"  component={CreateScreen} />
-      <Tab.Screen name="Mensajes" component={MessajesScreen} />
+      <Tab.Screen name="Mensajes" component={MessagesStackNavigator} />
       <Tab.Screen name="Perfil"   component={ProfileScreen} />
     </Tab.Navigator>
   );
