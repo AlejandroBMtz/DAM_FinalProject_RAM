@@ -53,6 +53,13 @@ function CustomTabBar({ state, descriptors, navigation }) {
   const { width } = Dimensions.get('window');
   const tabWidth = width / state.routes.length;
 
+  const focusedRoute = state.routes[state.index];
+  const { options } = descriptors[focusedRoute.key];
+
+  if (options.tabBarStyle?.display === 'none') {
+    return null; // Si tiene display: 'none', no renderizamos la barra inferior
+  }
+
   // Posicion X inicial del indicador
   const indicatorX = useRef(
     new Animated.Value(state.index * tabWidth + tabWidth / 2 - INDICATOR_SIZE / 2)

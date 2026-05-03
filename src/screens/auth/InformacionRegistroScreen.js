@@ -7,8 +7,11 @@ import {
   StatusBar,
   ScrollView,
   ActivityIndicator,
-  Alert
+  Alert,
+  Modal,
+  Platform
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; 
 
 // --- Importaciones reales de Firebase ---
 import { auth, db } from '../../services/firebaseConfig';
@@ -22,12 +25,31 @@ const HABILIDADES_INFORMATICA = [
   'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave'
 ];
 
+const CARRERAS = [
+  'Licenciatura en Informática',
+  'Licenciatura en Administración de las TI',
+  'Ingeniería de Software',
+  'Ingeniería en Computación',
+  'Ingeniería en Telecomunicaciones y Redes',
+  'Ingeniería en Ciencia y Analítica de Datos',
+  'Ingeniería en Tecnologías de Información y Ciberseguridad'
+];
+
+const SEMESTRES = ['0','1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
 const InformacionRegistroScreen = ({ route, navigation }) => {
-  // Recibimos los datos de SignUpScreen
   const { nombre, email, password } = route.params || {};
 
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Estados para los datos de carrera y semestre
+  const [carrera, setCarrera] = useState(null);
+  const [semestre, setSemestre] = useState(null);
+  
+  // Estados para controlar la visibilidad de los modales
+  const [modalCarreraVisible, setModalCarreraVisible] = useState(false);
+  const [modalSemestreVisible, setModalSemestreVisible] = useState(false);
 
   const toggleSkill = (skill) => {
     if (selectedSkills.includes(skill)) {
@@ -37,7 +59,6 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
     }
   };
 
-  // Traducción amigable de errores de Firebase
   const getFriendlyError = (code) => {
     switch (code) {
       case 'auth/email-already-in-use': return "Este correo ya está registrado.";
@@ -48,13 +69,21 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
   };
 
   const finalizarRegistro = async () => {
-    // Validación
+    if (!carrera) {
+      Alert.alert("Atención", "Por favor selecciona tu carrera.");
+      return;
+    }
+
+    if (!semestre) {
+      Alert.alert("Atención", "Por favor selecciona tu semestre.");
+      return;
+    }
+
     if (selectedSkills.length === 0) {
       Alert.alert("Atención", "Por favor selecciona al menos una habilidad para compartir.");
       return;
     }
 
-    // Protegemos contra datos vacíos en caso de que route.params falle
     if (!email || !password || !nombre) {
       Alert.alert("Error", "Faltan datos de registro. Por favor vuelve al paso anterior.");
       return;
@@ -63,21 +92,19 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
     setLoading(true);
 
     try {
-      // 1. Creamos el usuario en Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
 
-      // 2. Guardamos su perfil en Firestore (Colección "users", documento con su UID)
       await setDoc(doc(db, "users", user.uid), {
         nombre: nombre.trim(),
         email: email.trim(),
+        carrera: carrera,
+        semestre: semestre,
         habilidades: selectedSkills,
         fechaRegistro: new Date().toISOString()
       });
 
-      // ¡Todo listo! 
-      // No necesitamos un navigation.navigate() aquí porque al crearse la cuenta,
-      // Firebase inicia sesión automáticamente y tu AppNavigator nos moverá al MainNavigator.
+      // Firebase iniciará sesión automáticamente al crear el usuario.
 
     } catch (error) {
       console.log("Error en Firebase:", error);
@@ -93,15 +120,40 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
       
       <View style={styles.header}>
         <Text style={styles.title}>Tus habilidades</Text>
-        <Text style={styles.subtitle}>¿Qué habilidades podrías compartir?</Text>
+        <Text style={styles.subtitle}>Cuéntanos un poco más sobre ti</Text>
       </View>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.categoryTitle}>Informática</Text>
-        
+        {/* --- SELECTOR DE CARRERA --- */}
+        <Text style={styles.sectionLabel}>CARRERA</Text>
+        <TouchableOpacity 
+          style={styles.selectorButton} 
+          onPress={() => setModalCarreraVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.selectorText, !carrera && styles.placeholderText]}>
+            {carrera ? carrera : "Selecciona tu carrera"}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#7E8494" />
+        </TouchableOpacity>
+
+        {/* --- SELECTOR DE SEMESTRE --- */}
+        <Text style={styles.sectionLabel}>SEMESTRE</Text>
+        <TouchableOpacity 
+          style={styles.selectorButton} 
+          onPress={() => setModalSemestreVisible(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.selectorText, !semestre && styles.placeholderText]}>
+            {semestre ? `${semestre}° Semestre` : "Selecciona tu semestre"}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#7E8494" />
+        </TouchableOpacity>
+
+        <Text style={[styles.sectionLabel, { marginTop: 10 }]}>HABILIDADES (INFORMÁTICA)</Text>
         <View style={styles.tagsContainer}>
           {HABILIDADES_INFORMATICA.map((skill, index) => {
             const isSelected = selectedSkills.includes(skill);
@@ -141,6 +193,75 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* --- MODAL PARA CARRERAS --- */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalCarreraVisible}
+        onRequestClose={() => setModalCarreraVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.dragIndicator} />
+            <Text style={styles.modalTitle}>Selecciona tu carrera</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {CARRERAS.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.modalOption}
+                  onPress={() => {
+                    setCarrera(item);
+                    setModalCarreraVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.modalOptionText,
+                    carrera === item && styles.modalOptionTextSelected
+                  ]}>
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- MODAL PARA SEMESTRES --- */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalSemestreVisible}
+        onRequestClose={() => setModalSemestreVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.dragIndicator} />
+            <Text style={styles.modalTitle}>Selecciona tu semestre</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {SEMESTRES.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.modalOption}
+                  onPress={() => {
+                    setSemestre(item);
+                    setModalSemestreVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.modalOptionText,
+                    semestre === item && styles.modalOptionTextSelected
+                  ]}>
+                    {item}° Semestre
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 };
@@ -151,9 +272,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B0D14', 
   },
   header: {
-    paddingTop: 60,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 24,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   title: {
     color: '#FFFFFF',
@@ -171,11 +292,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 20,
   },
-  categoryTitle: {
-    color: '#7E8494',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 20,
+  sectionLabel: {
+    color: '#8A8F9E',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    marginTop: 15,
+  },
+  selectorButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#15171E',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2D3243',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 15,
+  },
+  selectorText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    flex: 1,
+  },
+  placeholderText: {
+    color: '#5E6376',
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -208,9 +351,11 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     paddingTop: 20,
     backgroundColor: '#0B0D14', 
+    borderTopWidth: 1,
+    borderTopColor: '#15171E',
   },
   primaryButton: {
     backgroundColor: '#2563EB', 
@@ -222,6 +367,51 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  
+  // --- ESTILOS DE LOS MODALES ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#15171E',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    maxHeight: '70%', 
+  },
+  dragIndicator: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#2D3243',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalOption: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1C1F2B',
+  },
+  modalOptionText: {
+    color: '#A0A4B8',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  modalOptionTextSelected: {
+    color: '#3B82F6',
     fontWeight: 'bold',
   },
 });
