@@ -81,9 +81,6 @@ export default function tickets() {
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mis Tickets</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Inicio', { screen: 'Notifications' })}>
-          <Ionicons name="notifications" size={24} color="white" />
-        </TouchableOpacity>
       </View>
 
       {loading ? (
