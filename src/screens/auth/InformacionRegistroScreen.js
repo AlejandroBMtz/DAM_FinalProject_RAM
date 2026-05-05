@@ -101,7 +101,11 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
         carrera: carrera,
         semestre: semestre,
         habilidades: selectedSkills,
-        fechaRegistro: new Date().toISOString()
+        fechaRegistro: new Date().toISOString(),
+        helpGiven: 0,
+        rated: 0,
+        helpAsked: 0,
+        points: 0
       });
 
       // Firebase iniciará sesión automáticamente al crear el usuario.
