@@ -1,21 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  Image, 
-  StatusBar,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Alert
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 
 export default function TicketScreen({ route }) {
@@ -100,20 +87,48 @@ export default function TicketScreen({ route }) {
   };
 
   const crearConversacion = async () => {
-    
     try {
-      await addDoc(collection(db, "conversaciones"), {
-        solicitante: ticketData?.usuario,
+      // 1. Crear la conversacion vinculada al ID del ticket
+      const convoRef = await addDoc(collection(db, "conversaciones"), {
+        solicitudId: ticketData.id,        // <-- Vinculado al problema
+        tituloProblema: ticketData.titulo, // <-- Guardamos el título para mostrarlo
+        solicitante: ticketData.usuario,
         ayudante: auth.currentUser.uid,
-        ultimoMensaje: "Comienza tu conversación",
+        ultimoMensaje: "¡Hola, yo te apoyo!",
         ultimaActividad: new Date().toISOString()
       });
-      console.log("Éxito");
 
-      navigation.navigate('Mensajes', { contactId: ticketData?.usuario });
+      // 2. Cambiar el estado del ticket a 'en proceso'
+      const ticketRef = doc(db, 'solicitudes', ticketData.id);
+      await updateDoc(ticketRef, { estado: 'en proceso' });
+
+      // 3. Crear el primer mensaje automaticamente
+      await addDoc(collection(db, "mensajes"), {
+        idConversacion: convoRef.id,
+        idUsuario: auth.currentUser.uid,
+        texto: "¡Hola, yo te apoyo!",
+        tiempoEnviado: new Date().toISOString()
+      });
+
+      console.log("Conversación e inicio automático exitosos");
+
+      // Construimos la data para la siguiente pantalla
+      const convoData = {
+        id: convoRef.id,
+        solicitudId: ticketData.id,
+        tituloProblema: ticketData.titulo,
+        nombre: creator?.nombre || 'Usuario', // Nombre de quien recibe la ayuda
+      };
+
+      // Navegar al chat pasando la data necesaria para mostrar el título del problema y el nombre del interlocutor
+      navigation.navigate('Mensajes', { 
+        screen: 'MensajeScreen', 
+        params: { conversacionData: convoData } 
+      });
+
     } catch (error) {
       console.log("Error en Firebase:", error);
-      Alert.alert("Error de Registro", error.message || String(error));
+      Alert.alert("Error", error.message || String(error));
     }
   }
 
@@ -211,7 +226,7 @@ export default function TicketScreen({ route }) {
       </ScrollView>
 
 
-      {/* ================= MODAL DE REPORTE ================= */}
+      {/*MODAL DE REPORTE*/}
       <Modal
         animationType="slide"
         transparent={true}
@@ -280,7 +295,7 @@ export default function TicketScreen({ route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#09090B', // Mismo fondo oscuro de CreateScreen
+    backgroundColor: '#09090B',
   },
   header: {
     flexDirection: 'row',
@@ -378,7 +393,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     marginRight: 15,
-    backgroundColor: '#2D3243', // Color de fondo por si no carga la imagen
+    backgroundColor: '#2D3243',
   },
   userInfo: {
     flex: 1,
@@ -431,7 +446,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '100%',
     padding: 20,
-    backgroundColor: '#09090B', // Mismo fondo para tapar el scroll
+    backgroundColor: '#09090B',
     borderTopWidth: 1,
     borderTopColor: '#15171E',
     marginBottom: 50,
@@ -523,7 +538,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   submitReportBtn: {
-    backgroundColor: '#FF4D4D', // Rojo rosado de la imagen
+    backgroundColor: '#FF4D4D',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

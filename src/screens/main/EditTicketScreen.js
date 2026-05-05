@@ -1,34 +1,30 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView,
-  Alert,
-  TextInput,
-} from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View,  Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput, Modal, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 // --- Importaciones reales de Firebase ---
-import { auth, db } from '../../services/firebaseConfig';
-import { collection, addDoc } from 'firebase/firestore'; 
+import { db } from '../../services/firebaseConfig';
+import { doc, updateDoc } from 'firebase/firestore'; 
 
-export default function crear({ route, navigation }) {
-  const [titulo, setTitulo] = useState('');
-  const [desc, setDesc] = useState('');
-  const [selectedSkills, setSelectedSkills] = useState([]);
+export default function EditTicketScreen({ route, navigation }) {
+  // Recibimos los datos del ticket a editar mediante los parámetros de navegación
+  const { ticketData } = route.params || {};
+
+  // Inicializamos los estados con la informacion existente
+  const [titulo, setTitulo] = useState(ticketData?.titulo || '');
+  const [desc, setDesc] = useState(ticketData?.desc || '');
+  const [selectedSkills, setSelectedSkills] = useState(ticketData?.etiquetas || []);
+  const [prioridad, setPrioridad] = useState(ticketData?.prioridad || null);
   const [loading, setLoading] = useState(false);
-  const [prioridad, setPrioridad] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const HABILIDADES_INFORMATICA = [
     'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño', 
     'JavaScript', 'Algoritmos', 'React Native', 'Node.js', 
-    'UX/UI', 'Figma', 'Recursión', 'Java', 'Express', 
-    'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave'
+    'UX/UI', 'Figma', 'Recursión', 'Java', 'Express'
   ];
 
-  // -funcion sin alerta
   const toggleSkill = (skill) => {
     if (selectedSkills.includes(skill)) {
       setSelectedSkills(selectedSkills.filter((item) => item !== skill));
@@ -38,21 +34,21 @@ export default function crear({ route, navigation }) {
   };
 
   const togglePrio = (prio) => {
-    if (prioridad == prio) {
+    if (prioridad === prio) {
       setPrioridad(null);
     } else {
       setPrioridad(prio);
     }
   }
 
-  const crearSolicitud = async () => {
+  const guardarCambios = async () => {
     if (selectedSkills.length === 0) {
       Alert.alert("Atención", "Favor de seleccionar al menos una etiqueta para la solicitud.");
       return;
     } 
 
     if (!titulo || !desc) {
-      Alert.alert("Error", "Faltan datos de registro.");
+      Alert.alert("Error", "Faltan datos en el registro.");
       return;
     }
 
@@ -64,32 +60,61 @@ export default function crear({ route, navigation }) {
     setLoading(true);
 
     try {
-      await addDoc(collection(db, "solicitudes"), {
+      // Referencia directa al documento existente
+      const ticketRef = doc(db, "solicitudes", ticketData.id);
+      
+      await updateDoc(ticketRef, {
         titulo: titulo,
         desc: desc,
         etiquetas: selectedSkills,
-        usuario: auth.currentUser.uid,
         prioridad: prioridad,
-        estado: 'disponible',
-        fechaCreacion: new Date().toISOString()
+        fechaActualizacion: new Date().toISOString()
       });
-      console.log("Éxito");
 
-      navigation.navigate('Inicio', { screen: 'myTicket' });
+      // Mostramos el modal de exito
+      setShowSuccessModal(true);
+
+      // Esperamos 2 segundos y luego navegamos de regreso
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        navigation.goBack();
+      }, 2000);
+
     } catch (error) {
-      console.log("Error en Firebase:", error);
-      Alert.alert("Error de Registro", error.message || String(error));
+      console.log("Error en Firebase al editar:", error);
+      Alert.alert("Error de Actualización", error.message || String(error));
     } finally {
       setLoading(false);
     }
   };
 
+  // Ocultar el TabBar inferior al entrar a esta pantalla
+    useFocusEffect(
+      useCallback(() => {
+        const parent = navigation.getParent();
+        if (parent) {
+          parent.setOptions({ tabBarStyle: { display: 'none' } });
+        }
+        return () => {
+          if (parent) {
+            // devolvemos el display a 'flex', el CustomTabBar hara el resto
+            parent.setOptions({ tabBarStyle: { display: 'flex' } });
+          }
+        };
+      }, [navigation])
+    );
+
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#09090B" />
+      
+      {/* Header estilo "Regresar" */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Pedir ayuda</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Inicio', { screen: 'Notifications' })}>
-          <Ionicons name="notifications" size={24} color="white" />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <View style={styles.backButtonIcon}>
+            <Ionicons name="arrow-back" size={20} color="#8A8F9E" />
+          </View>
+          <Text style={styles.backText}>Regresar</Text>
         </TouchableOpacity>
       </View>
       
@@ -98,7 +123,7 @@ export default function crear({ route, navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.titleContainer}>
-          <Text style={styles.creaTicket}>Crea tu ticket</Text>
+          <Text style={styles.creaTicket}>Edita tu ticket</Text>
           <Text style={styles.creaSub}>Alguien de la facultad puede ayudarte</Text>
         </View>
 
@@ -187,10 +212,24 @@ export default function crear({ route, navigation }) {
           })}
         </View>
 
-        <TouchableOpacity style={styles.submit} onPress={crearSolicitud} disabled={loading}>
-          <Text style={styles.submitText}>Crear Solicitud</Text>
+        <TouchableOpacity style={styles.submit} onPress={guardarCambios} disabled={loading}>
+          <Text style={styles.submitText}>Guardar Cambios</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal de exito automatico */}
+      <Modal visible={showSuccessModal} transparent animationType="fade">
+        <View style={styles.modalOverlayCenter}>
+          <View style={styles.modalContentCenter}>
+            <View style={styles.successIconContainer}>
+              <Ionicons name="checkmark-circle" size={60} color="#4ADE80" />
+            </View>
+            <Text style={styles.modalTitleCenter}>Editado correctamente</Text>
+            <Text style={styles.modalSubtitleCenter}>Tus cambios han sido guardados.</Text>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -203,15 +242,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 20,
-    justifyContent: 'space-between',
+    paddingBottom: 10,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFF',
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButtonIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2D3243',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  backText: {
+    color: '#8A8F9E',
+    fontSize: 15,
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -235,7 +286,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     color: '#8A8F9E',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 'bold',
     letterSpacing: 1.5,
     marginBottom: 10,
@@ -287,9 +338,9 @@ const styles = StyleSheet.create({
     borderColor: '#4ADE80',
   },
   dot: {
-    width: 25,
-    height: 25,
-    borderRadius: 15,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     marginBottom: 8,
   },
   prioText: {
@@ -340,4 +391,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold"
   },
+  
+  // Estilos del Modal
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContentCenter: {
+    backgroundColor: '#15171E',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1F2229',
+  },
+  successIconContainer: {
+    marginBottom: 15,
+  },
+  modalTitleCenter: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitleCenter: {
+    color: '#8A8F9E',
+    fontSize: 14,
+    textAlign: 'center',
+  }
 });
