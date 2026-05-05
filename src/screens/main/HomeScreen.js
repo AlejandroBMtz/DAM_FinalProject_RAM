@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 
 
@@ -48,12 +48,17 @@ export default function FeedScreen() {
     try {
       const solRef = collection(db, 'solicitudes');
       const q = query(solRef, where('usuario', '!=', auth.currentUser.uid), orderBy("prioridad"), orderBy("fechaCreacion"));
-      const querySnapshot = await getDocs(q);
-      const results = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setTickets(results);
+
+      const unsub = onSnapshot(q, async (querySnapshot) => {
+        const results = await Promise.all(querySnapshot.docs.map(async (docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            ...data,
+          };
+        }));
+        setTickets(results);
+      });
     } catch (error) {
       console.log('Error al obtener solicitudes:', error);
     } finally {

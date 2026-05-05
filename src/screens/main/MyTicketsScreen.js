@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal, Image, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { collection, query, where, getDocs, orderBy, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,14 +54,18 @@ export default function MyTicketsScreen() {
       // 1. Obtener mis solicitudes
       const solRef = collection(db, 'solicitudes');
       const q = query(solRef, where('usuario', '==', auth.currentUser.uid), orderBy("fechaCreacion", "desc"));
-      const querySnapshot = await getDocs(q);
-      const results = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        // Simulamos un estado si no existe para propositos de diseño
-        estado: doc.data().estado || 'disponible' 
-      }));
-      setSolicitudes(results);
+
+      const unsub = onSnapshot(q, async (querySnapshot) => {
+        const results = await Promise.all(querySnapshot.docs.map(async (docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            ...data,
+            estado: data.estado || 'disponible' 
+          };
+        }));
+        setSolicitudes(results);
+      });
 
       // 2. Aqui obtendrias las ayudas que estas dando (mockeado por ahora para ver el diseño)
       setAyudando([
@@ -251,7 +255,7 @@ export default function MyTicketsScreen() {
           </View>
         </View>
       ))}
-      <TouchableOpacity style={styles.newTicketBtn} >
+      <TouchableOpacity style={styles.newTicketBtn} onPress={() => navigation.navigate('CrearTicketScreen')}>
         <Text style={styles.newTicketText}>¿Necesitas más ayuda? <Text style={{color: '#6C63FF', fontWeight: 'bold'}}>Crear nuevo ticket</Text></Text>
       </TouchableOpacity>
     </ScrollView>
