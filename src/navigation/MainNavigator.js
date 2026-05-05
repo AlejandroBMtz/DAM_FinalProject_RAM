@@ -15,6 +15,7 @@ import ProfileScreen from '../screens/main/ProfileScreen';
 //Importar las pantallas secundarias
 import NotificationsScreen from '../screens/main/NotificationsScreen';
 import TicketScreen from '../screens/main/TicketScreen';
+import EditarTicketScreen from '../screens/main/EditTicketScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -53,6 +54,15 @@ function MessagesStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MensajesMain" component={MessajesScreen} />
       <Stack.Screen name="MensajeScreen" component={MensajeScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function MyTicketsStackNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MyTicketsMain" component={MyTicketsScreen} />
+      <Stack.Screen name="EditarTicketScreen" component={EditarTicketScreen} />
     </Stack.Navigator>
   );
 }
@@ -149,7 +159,7 @@ export default function MainNavigator() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Inicio"   component={HomeStackNavigator} />
-      <Tab.Screen name="Tickets"  component={MyTicketsScreen} />
+      <Tab.Screen name="Tickets"  component={MyTicketsStackNavigator} />
       <Tab.Screen name="Agregar"  component={CreateScreen} />
       <Tab.Screen name="Mensajes" component={MessagesStackNavigator} />
       <Tab.Screen name="Perfil"   component={ProfileScreen} />

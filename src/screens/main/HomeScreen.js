@@ -115,9 +115,15 @@ export default function FeedScreen() {
     return `Hace ${difDias} días`;
   }
 
-  // Logica de filtrado
+  // Logica de filtrado en HomeScreen.js
   const filteredTickets = tickets
     .filter((ticket) => {
+      // 1. Excluir tickets que ya están en proceso
+      if (ticket.estado === 'en proceso') {
+        return false;
+      }
+      
+      // 2. Filtros de búsqueda y etiquetas...
       if (!ticket || !ticket.titulo || !ticket.desc) {
         return false;
       }

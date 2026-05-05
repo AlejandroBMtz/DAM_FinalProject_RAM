@@ -1,182 +1,252 @@
-import React, { useState, useEffect } from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  StatusBar,
-  ScrollView,
-} from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, StatusBar, ScrollView, ImageBackground, Image, Keyboard, Animated, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { collection, query, where, getDocs, orderBy, or, doc, getDoc, addDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 
+
+// Hook: mide la altura real del teclado en el dispositivo actual y la devuelve en tiempo real
+
+function useKeyboardHeight() {
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    // iOS dispara Will* antes de la animación → transición suave sin salto.
+    // Android solo tiene Did*, que igualmente funciona bien.
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (e) => setKeyboardHeight(e.endCoordinates.height);
+    const onHide = () => setKeyboardHeight(0);
+
+    const subShow = Keyboard.addListener(showEvent, onShow);
+    const subHide = Keyboard.addListener(hideEvent, onHide);
+
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, []);
+
+  return keyboardHeight;
+}
+
+// Componente principal
 export default function MensajeScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const scrollViewRef = useRef(null);
+
   const [message, setMessage] = useState('');
   const [mensajes, setMensajes] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const keyboardHeight = useKeyboardHeight();
+
   const conversacionData = route.params?.conversacionData;
-  const title =
-    route.params?.nombre ||
-    conversacionData?.nombre ||
-    'Mensaje';
-  
-  //const unsub = onSnapshot(doc(db, "conversaciones", conversacionData?.id), (doc) => {
-    //obtenerMensajes;
-  //});
+  const title = route.params?.nombre || conversacionData?.nombre || 'Usuario';
+  const fotoUrl = conversacionData?.fotoUrl;
 
+  // Enviar mensaj
   const handleSend = async () => {
-
     const convoUid = conversacionData?.id;
 
-    if ( message == '' ) {
-      return;
-    }
+    if (message.trim() === '') return;
 
     setLoading(true);
 
-    try{
-      await addDoc(collection(db, "mensajes"), {
+    try {
+      await addDoc(collection(db, 'mensajes'), {
         idConversacion: convoUid,
         idUsuario: auth.currentUser.uid,
         texto: message,
-        tiempoEnviado: new Date().toISOString()
+        tiempoEnviado: new Date().toISOString(),
       });
-      await setDoc(doc(db, "conversaciones", convoUid), {
-        ultimoMensaje: message,
-        ultimaActividad: new Date().toISOString()
-      }, {merge: true})
-      console.log("Éxito");
-
+      await setDoc(
+        doc(db, 'conversaciones', convoUid),
+        {
+          ultimoMensaje: message,
+          ultimaActividad: new Date().toISOString(),
+        },
+        { merge: true }
+      );
     } catch (error) {
-      console.log("Error en Firebase:", error);
-      Alert.alert("Error de Registro", error.message || String(error));
+      console.log('Error en Firebase:', error);
     } finally {
       setLoading(false);
       setMessage('');
-    };
-    
+    }
   };
 
-  const obtenerMensajes = async () => {
+  //escuchar mensajes en tiempo real
+  const obtenerMensajes = () => {
     const convoUid = conversacionData?.id;
 
     if (!convoUid) {
-      console.log('Conversación inválida: falta id de conversación');
       setMensajes([]);
       setLoading(false);
       return;
     }
 
-    try {
-      const msgRef = collection(db, 'mensajes');
-      const q = query(
-        msgRef,
-        where('idConversacion', '==', convoUid),
-        orderBy('tiempoEnviado')
-      );
-      
-      const unsub = onSnapshot(q, (querySnapshot) => {
-        const results = querySnapshot.docs.map((docSnap) => ({
+    const msgRef = collection(db, 'mensajes');
+    const q = query(
+      msgRef,
+      where('idConversacion', '==', convoUid),
+      orderBy('tiempoEnviado')
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const results = snapshot.docs.map((docSnap) => ({
           id: docSnap.id,
           ...docSnap.data(),
         }));
         setMensajes(results);
-      })
-    } catch (error) {
-      console.log('Error al obtener mensajes:', error);
-    } finally {
-      setLoading(false);
-    }
+        setLoading(false);
+      },
+      (error) => {
+        console.log('Error al obtener mensajes:', error);
+        setLoading(false);
+      }
+    );
+
+    // Devolver unsub para limpiar el listener al desmontar
+    return unsub;
   };
 
+  // Ocultar TabBar al entrar
+  useFocusEffect(
+    useCallback(() => {
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.setOptions({ tabBarStyle: { display: 'none' } });
+      }
+      return () => {
+        if (parent) {
+          parent.setOptions({ tabBarStyle: { display: 'flex' } });
+        }
+      };
+    }, [navigation])
+  );
+
+  // Montar listener
   useEffect(() => {
-    obtenerMensajes();
+    const unsub = obtenerMensajes();
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
   }, []);
 
-  let scrollViewRef = null;
+  //Scroll al último mensaje
+  useEffect(() => {
+    if (mensajes.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [mensajes]);
 
+  //Scroll al abrir teclado
+  useEffect(() => {
+    if (keyboardHeight > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [keyboardHeight]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" backgroundColor="#0B0D14" />
 
+      {/*HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {title}
-        </Text>
+        <Image
+          source={fotoUrl ? { uri: fotoUrl } : require('../../../assets/images/Logo.png')}
+          style={styles.avatar}
+        />
 
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <View style={styles.body}>
-
-        {loading ? (
-          <Text style={styles.infoText}>Cargando...</Text>
-        ) : mensajes.length === 0 ? (
-          <Text style={styles.bodyPlaceholder}>Aquí aparecerá la conversación con {title}.</Text>
-        ) : (
-          <ScrollView
-            ref={(ref) => {
-            scrollViewRef = ref;
-          }}
-          onContentSizeChange={() => {
-            if (scrollViewRef) {
-              scrollViewRef.scrollToEnd({ animated: true });
-            }
-          }}
-            style={styles.scrollView}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            {mensajes.map((msg) => (
-              <View 
-                key={msg.id}
-                style={[
-                styles.cuerpoMensaje,
-                (msg.idUsuario != auth.currentUser.uid) ? styles.cuerpoRecibido : styles.cuerpoEnviado
-                ]}
-              >
-                <Text style={[
-                  styles.textoMensaje,
-                  msg.idUsuario === auth.currentUser.uid && styles.textoEnviado
-                ]}>{msg.texto}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        )}
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={90}
-      >
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.textInput}
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Escribe un mensaje..."
-            placeholderTextColor="#8B95A1"
-            multiline={false}
-          />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSend} activeOpacity={0.8}>
-            <Ionicons name="send" size={20} color="#FFF" />
-          </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {title}
+          </Text>
         </View>
-      </KeyboardAvoidingView>
+
+        <TouchableOpacity style={styles.terminarBtn}>
+          <Text style={styles.terminarText}>Terminar</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/*areas de mensaje*/}
+      <ImageBackground
+        source={require('../../../assets/images/FondoChat.png')}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {loading && mensajes.length === 0 ? (
+            <Text style={styles.infoText}>Cargando...</Text>
+          ) : mensajes.length === 0 ? (
+            <Text style={styles.infoText}>Inicia la conversación.</Text>
+          ) : (
+            mensajes.map((msg) => {
+              const esMio = msg.idUsuario === auth.currentUser.uid;
+              return (
+                <View
+                  key={msg.id}
+                  style={[
+                    styles.cuerpoMensaje,
+                    esMio ? styles.cuerpoEnviado : styles.cuerpoRecibido,
+                  ]}
+                >
+                  <Text style={styles.textoMensaje}>{msg.texto}</Text>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      </ImageBackground>
+
+      {/* barra de imput */}
+      <View style={[styles.inputRow, { marginBottom: keyboardHeight }]}>
+        <View style={styles.inputLeftIcons}>
+          <Ionicons name="mail-outline" size={22} color="#8A8F9E" />
+          <View style={styles.verticalDivider} />
+        </View>
+
+        <TextInput
+          style={styles.textInput}
+          value={message}
+          onChangeText={setMessage}
+          placeholder="Escribe un mensaje..."
+          placeholderTextColor="#8A8F9E"
+          multiline={true}
+        />
+
+        <TouchableOpacity style={styles.attachButton}>
+          <Ionicons name="attach-outline" size={26} color="#8A8F9E" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.sendButton}
+          onPress={handleSend}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="send" size={18} color="#FFF" style={{ marginLeft: 2 }} />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -190,34 +260,86 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 30,
+    paddingTop: Platform.OS === 'ios' ? 10 : 45,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E242F',
+    borderBottomColor: '#161920',
     backgroundColor: '#0B0D14',
   },
   backButton: {
+    marginRight: 10,
+  },
+  avatar: {
     width: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2D3243',
+    marginRight: 12,
+  },
+  headerTitleContainer: {
+    flex: 1,
   },
   headerTitle: {
-    flex: 1,
     color: '#FFF',
-    fontSize: 20,
-    fontWeight: '700',
-    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
-  headerSpacer: {
-    width: 40,
+  terminarBtn: {
+    backgroundColor: '#1E3A8A',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
   },
-  body: {
+  terminarText: {
+    color: '#60A5FA',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  background: {
     flex: 1,
+    width: '100%',
+  },
+  infoText: {
+    color: '#8A8F9E',
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 14,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  listContainer: {
     paddingHorizontal: 16,
     paddingVertical: 20,
+    gap: 8,
   },
-  bodyPlaceholder: {
-    color: '#8892A3',
+  cuerpoMensaje: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: '85%',
+  },
+  cuerpoEnviado: {
+    backgroundColor: '#2563EB',
+    alignSelf: 'flex-end',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 4,
+  },
+  cuerpoRecibido: {
+    backgroundColor: '#1C1F2B',
+    alignSelf: 'flex-start',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: '#2D3243',
+  },
+  textoMensaje: {
+    color: '#FFFFFF',
     fontSize: 15,
     lineHeight: 22,
   },
@@ -226,63 +348,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#161920',
     borderTopWidth: 1,
-    borderTopColor: '#1E242F',
-    backgroundColor: '#0B0D14',
+    borderTopColor: '#1F2229',
+  },
+  inputLeftIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  verticalDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#2D3243',
+    marginHorizontal: 10,
   },
   textInput: {
     flex: 1,
-    minHeight: 44,
-    maxHeight: 120,
-    borderRadius: 999,
-    backgroundColor: '#161920',
+    minHeight: 40,
+    maxHeight: 100,
     color: '#FFF',
-    paddingHorizontal: 16,
     fontSize: 15,
-    borderWidth: 1,
-    borderColor: '#1F2229',
+    paddingTop: Platform.OS === 'ios' ? 10 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+  },
+  attachButton: {
+    paddingHorizontal: 10,
   },
   sendButton: {
-    marginLeft: 12,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#4F46E5',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2563EB',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  cuerpoMensaje: {
-    borderWidth: 1,
-    padding: 10,
-    borderRadius: 15,
-    width: "80%",
-  }, 
-  cuerpoEnviado: {
-    backgroundColor: "#265BA6",
-    alignSelf: "flex-end",
-    marginLeft: 40,
-    marginVertical: 6,
-    justifyContent: "flex-end",
-    alignItems: 'flex-end',
-    width: "auto"
-  },
-  cuerpoRecibido: {
-    backgroundColor: "#161920",
-    alignSelf: "flex-start",
-    marginRight: 40,
-    marginVertical: 6,
-    width: "auto"
-  },
-  textoMensaje: {
-    color: "#fff"
-  },
-  textoEnviado: {
-    textAlign: 'right',
-  },
-  scrollView: {
-    width: '100%',
-  },
-  listContainer: {
-    width: '100%',
+    marginLeft: 5,
   },
 });
