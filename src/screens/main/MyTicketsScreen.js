@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Text, View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal, Image, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { collection, query, where, getDocs, orderBy, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -80,9 +80,11 @@ export default function MyTicketsScreen() {
     }
   };
 
-  useEffect(() => {
-    obtenerDatos();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      obtenerDatos();
+    }, [])
+  );
 
   const handleTabChange = (index) => {
     setActiveTab(index);
@@ -255,7 +257,7 @@ export default function MyTicketsScreen() {
           </View>
         </View>
       ))}
-      <TouchableOpacity style={styles.newTicketBtn} onPress={() => navigation.navigate('CrearTicketScreen')}>
+      <TouchableOpacity style={styles.newTicketBtn} onPress={() => navigation.navigate('Agregar')}>
         <Text style={styles.newTicketText}>¿Necesitas más ayuda? <Text style={{color: '#6C63FF', fontWeight: 'bold'}}>Crear nuevo ticket</Text></Text>
       </TouchableOpacity>
     </ScrollView>
