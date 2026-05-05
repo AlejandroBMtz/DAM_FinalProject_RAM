@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { auth, db } from '../../services/firebaseConfig';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
@@ -24,46 +24,53 @@ const ProfileScreen = () => {
   const [helpGiven, setHelpGiven] = useState(0);
   const [rated, setRated] = useState(0);
   const [helpAsked, setHelpAsked] = useState(0);
-  const [points, setPoints] = useState(0);
   const [fechaRegistro, setFechaRegistro] = useState('');
   const [habilidades, setHabilidades] = useState([]);
   const [carrera, setCarrera] = useState('');
   const [semestre, setSemestre] = useState('');
+  const [previousLevel, setPreviousLevel] = useState(null);
 
+  const [points, setPoints] = useState(0);
   const level = Math.max(1, Math.floor(points / 100) + 1);
+  const progress = points % 100;
+  const puntosRestantes = progress === 0 ? 100 : 100 - progress;
+
   const formattedDate = fechaRegistro
     ? new Date(fechaRegistro).toLocaleDateString('es-ES')
     : '';
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (auth.currentUser) {
-        try {
-          const userDoc = await getDoc(
-            doc(db, 'users', auth.currentUser.uid)
-          );
+    if (auth.currentUser) {
+      const userDocRef = doc(db, 'users', auth.currentUser.uid);
+      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
 
-          if (userDoc.exists()) {
-            const data = userDoc.data();
+          setUserName(data.nombre || 'Nombre del usuario');
+          setHelpGiven(data.helpGiven || 0);
+          setRated(data.rated || 0);
+          setHelpAsked(data.helpAsked || 0);
+          setPoints(data.points || 0);
+          setFechaRegistro(data.fechaRegistro || '');
+          setHabilidades(data.habilidades || []);
+          setCarrera(data.carrera || '');
+          setSemestre(data.semestre || '');
 
-            setUserName(data.nombre || 'Nombre del usuario');
-            setHelpGiven(data.helpGiven || 0);
-            setRated(data.rated || 0);
-            setHelpAsked(data.helpAsked || 0);
-            setPoints(data.points || 0);
-            setFechaRegistro(data.fechaRegistro || '');
-            setHabilidades(data.habilidades || []);
-            setCarrera(data.carrera || '');
-            setSemestre(data.semestre || '');
+          const newLevel = Math.max(1, Math.floor((data.points || 0) / 100) + 1);
+          if (previousLevel !== null && newLevel > previousLevel) {
+            Alert.alert(
+              "¡Felicidades!",
+              `¡Has subido al nivel ${newLevel}!`,
+              [{ text: "OK" }]
+            );
           }
-        } catch (error) {
-          console.log('Error fetching user data:', error);
+          setPreviousLevel(newLevel);
         }
-      }
-    };
+      });
 
-    fetchUserData();
-  }, []);
+      return () => unsubscribe(); // Cleanup on unmount
+    }
+  }, [previousLevel]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -131,6 +138,11 @@ const ProfileScreen = () => {
           <View style={[styles.progressFill, { width: `${points % 100}%` }]} />
         </View>
       </View>
+      <Text style={styles.progressText}>
+      {progress === 0 && points != 0 
+        ? '¡Subiste de nivel!' 
+        : `Faltan ${puntosRestantes} puntos para el siguiente nivel`}
+      </Text>
 
       {/* SKILLS */}
       <View style={styles.skillsList}>
@@ -144,17 +156,17 @@ const ProfileScreen = () => {
       {/* STATS */}
       <View style={styles.statsGrid}>
         <View style={styles.card}>
-          <Text style={styles.cardNumber}>{helpGiven}</Text>
+          <Text style={styles.cardNumber0}>{helpGiven}</Text>
           <Text style={styles.cardLabel}>Ayudas dadas</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardNumber}>{rated}</Text>
+          <Text style={styles.cardNumber1}>{rated}</Text>
           <Text style={styles.cardLabel}>Calificación</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardNumber}>{helpAsked}</Text>
+          <Text style={styles.cardNumber2}>{helpAsked}</Text>
           <Text style={styles.cardLabel}>Ayudas pedidas</Text>
         </View>
       </View>
@@ -297,12 +309,22 @@ const styles = StyleSheet.create({
     width: 100,
   },
 
-  cardNumber: {
+  cardNumber0: {
     fontSize: 22,
     fontWeight: 'bold',
     color: '#22C55E',
   },
 
+  cardNumber1: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+  },
+  cardNumber2: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#3B82F6',
+  },
   cardLabel: {
     color: '#9CA3AF',
     fontSize: 12,
@@ -322,6 +344,12 @@ const styles = StyleSheet.create({
     color: '#F87171',
     fontWeight: 'bold',
   },
+  progressText: {
+  marginTop: 6,
+  color: '#9CA3AF',
+  fontSize: 12,
+  textAlign: 'center',
+},
 });
 
 export default ProfileScreen;
