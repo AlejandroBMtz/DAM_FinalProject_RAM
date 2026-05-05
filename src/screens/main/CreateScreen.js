@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -9,6 +9,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 // --- Importaciones reales de Firebase ---
 import { auth, db } from '../../services/firebaseConfig';
@@ -20,6 +21,15 @@ export default function crear({ route, navigation }) {
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [prioridad, setPrioridad] = useState(null);
+  
+  useFocusEffect(
+    useCallback(() => {
+      setTitulo('');
+      setDesc('');
+      setSelectedSkills([]);
+      setPrioridad(null);
+    }, [])
+  );
 
   const HABILIDADES_INFORMATICA = [
     'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño', 
@@ -75,7 +85,7 @@ export default function crear({ route, navigation }) {
       });
       console.log("Éxito");
 
-      navigation.navigate('Inicio', { screen: 'myTicket' });
+      navigation.navigate('Tickets', { screen: 'MyTicketsMain' });
     } catch (error) {
       console.log("Error en Firebase:", error);
       Alert.alert("Error de Registro", error.message || String(error));
