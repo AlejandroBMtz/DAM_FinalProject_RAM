@@ -152,7 +152,7 @@ export default function Crear({ route, navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Pedir ayuda</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Inicio', { screen: 'Notifications' })}>
+        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
           <Ionicons name="notifications" size={24} color="white" />
         </TouchableOpacity>
       </View>
