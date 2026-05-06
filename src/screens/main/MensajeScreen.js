@@ -5,7 +5,6 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 
-
 // Hook: mide la altura real del teclado en el dispositivo actual y la devuelve en tiempo real
 
 function useKeyboardHeight() {

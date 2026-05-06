@@ -15,7 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, addDoc } from 'firebase/firestore'; 
 
-export default function crear({ route, navigation }) {
+export default function Crear({ route, navigation }) {
   const [titulo, setTitulo] = useState('');
   const [desc, setDesc] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
@@ -55,7 +55,7 @@ export default function crear({ route, navigation }) {
     }
   }
 
-  const crearSolicitud = async () => {
+  const CrearSolicitud = async () => {
     if (selectedSkills.length === 0) {
       Alert.alert("Atención", "Favor de seleccionar al menos una etiqueta para la solicitud.");
       return;
@@ -197,7 +197,7 @@ export default function crear({ route, navigation }) {
           })}
         </View>
 
-        <TouchableOpacity style={styles.submit} onPress={crearSolicitud} disabled={loading}>
+        <TouchableOpacity style={styles.submit} onPress={CrearSolicitud} disabled={loading}>
           <Text style={styles.submitText}>Crear Solicitud</Text>
         </TouchableOpacity>
       </ScrollView>
