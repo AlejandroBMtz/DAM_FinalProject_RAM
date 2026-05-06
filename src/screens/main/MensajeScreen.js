@@ -266,7 +266,7 @@ export default function MensajeScreen() {
       </ImageBackground>
 
       {/* barra de imput */}
-      <View style={[styles.inputRow, { marginBottom: keyboardHeight }]}>
+      <View style={[styles.inputRow, { marginBottom: keyboardHeight + 50 }]}>
         <View style={styles.inputLeftIcons}>
           <Ionicons name="mail-outline" size={22} color="#8A8F9E" />
           <View style={styles.verticalDivider} />

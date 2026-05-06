@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+import React, { useState, useCallback } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
   ScrollView,
   Alert,
   TextInput,
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 // --- Importaciones reales de Firebase ---
 import { auth, db } from '../../services/firebaseConfig';
@@ -21,6 +22,15 @@ export default function crear({ route, navigation }) {
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [prioridad, setPrioridad] = useState(null);
+  
+  useFocusEffect(
+    useCallback(() => {
+      setTitulo('');
+      setDesc('');
+      setSelectedSkills([]);
+      setPrioridad(null);
+    }, [])
+  );
 
   const HABILIDADES_INFORMATICA = [
     'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño',

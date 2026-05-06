@@ -63,6 +63,7 @@ function MyTicketsStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MyTicketsMain" component={MyTicketsScreen} />
       <Stack.Screen name="EditarTicketScreen" component={EditarTicketScreen} />
+      <Stack.Screen name="CrearTicketScreen" component={CreateScreen} />
     </Stack.Navigator>
   );
 }
