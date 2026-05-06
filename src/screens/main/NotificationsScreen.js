@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
@@ -20,6 +20,22 @@ export default function NotificationsScreen() {
   const navigation = useNavigation();
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Ocultar el TabBar inferior al entrar a esta pantalla
+  useFocusEffect(
+    useCallback(() => {
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.setOptions({ tabBarStyle: { display: 'none' } });
+      }
+      return () => {
+        if (parent) {
+          // devolvemos el display a 'flex', el CustomTabBar hara el resto
+          parent.setOptions({ tabBarStyle: { display: 'flex' } });
+        }
+      };
+    }, [navigation])
+  );
 
   useEffect(() => {
     if (!auth.currentUser) return;
