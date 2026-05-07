@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: APIKEY,
   authDomain: "studentbank-97835.firebaseapp.com",
   projectId: "studentbank-97835",
-  storageBucket: "studentbank-97835.firebasestorage.app",
+  storageBucket: "studentbank-97835.appspot.com",
   messagingSenderId: "980989913613",
   appId: APPID,
   measurementId: "G-TGQRJJKNLV"
