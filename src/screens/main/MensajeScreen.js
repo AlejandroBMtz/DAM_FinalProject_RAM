@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, StatusBar, ScrollView, ImageBackground, Image, Keyboard, Animated, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDocs, deleteDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
@@ -156,6 +157,52 @@ export default function MensajeScreen() {
         },
         { merge: true }
       );
+      // Quien envia el mensaje
+      const currentUid = auth.currentUser.uid;
+      // quien es quien 
+      const otherUid = conversacionData.solicitante === currentUid
+        ? conversacionData.ayudante
+        : conversacionData.solicitante;
+
+      // Buscar el token del otro
+      if (otherUid) {
+
+        await addDoc(collection(db, 'notificaciones'), {
+          usuarioId: otherUid,
+          tipo: 'mensaje',
+          titulo: `Nuevo mensaje`,
+          descripcion: message.length > 30 ? message.substring(0, 30) + '...' : message,
+          leida: false,
+          fecha: new Date().toISOString()
+        });
+
+        const otherUserSnap = await getDoc(doc(db, 'users', otherUid));
+        if (otherUserSnap.exists()) {
+          const otherUserData = otherUserSnap.data();
+
+          if (otherUserData.pushToken) {
+            // peticion al servidor
+            const pushMessage = {
+              to: otherUserData.pushToken,
+              sound: 'default',
+              title: `Nuevo mensaje de ${auth.currentUser.displayName || 'un compañero'}`,
+              body: message,
+              data: { conversacionId: convoUid }, // Datos extra para saber qué chat abrir si la tocan
+            };
+
+            await fetch('https://exp.host/--/api/v2/push/send', {
+              method: 'POST',
+              headers: {
+                Accept: 'application/json',
+                'Accept-encoding': 'gzip, deflate',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(pushMessage),
+            });
+            console.log("Notificación enviada al token:", otherUserData.pushToken);
+          }
+        }
+      }
     } catch (error) {
       console.log('Error en Firebase:', error);
     } finally {
