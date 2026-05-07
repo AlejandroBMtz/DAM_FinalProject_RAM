@@ -7,6 +7,7 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
+  Image,
   ScrollView,
 } from 'react-native';
 
@@ -29,6 +30,7 @@ const ProfileScreen = () => {
   const [habilidades, setHabilidades] = useState([]);
   const [carrera, setCarrera] = useState('');
   const [semestre, setSemestre] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
   const [previousLevel, setPreviousLevel] = useState(null);
 
   const [points, setPoints] = useState(0);
@@ -56,6 +58,7 @@ const ProfileScreen = () => {
           setHabilidades(data.habilidades || []);
           setCarrera(data.carrera || '');
           setSemestre(data.semestre || '');
+          setPhotoUrl(data.fotoPerfil || '');
 
           const newLevel = Math.max(1, Math.floor((data.points || 0) / 100) + 1);
           if (previousLevel !== null && newLevel > previousLevel) {
@@ -105,13 +108,17 @@ const ProfileScreen = () => {
       <View style={styles.hero}>
         <TouchableOpacity 
           style={styles.settingsFloating}
-          onPress={() => navigation.navigate('Settings')}
+          onPress={() => navigation.navigate('SettingsScreen')}
         >
           <MaterialCommunityIcons name="cog" size={20} color="#fff" />
         </TouchableOpacity>
 
         <View style={styles.avatar}>
-          <MaterialCommunityIcons name="account" size={40} color="#fff" />
+          {photoUrl ? (
+            <Image source={{ uri: photoUrl }} style={styles.avatarImage} />
+          ) : (
+            <MaterialCommunityIcons name="account" size={40} color="#fff" />
+          )}
         </View>
       </View>
 
@@ -121,6 +128,7 @@ const ProfileScreen = () => {
         <Text style={styles.subtitle}>
           {carrera} · {semestre}° Semestre
         </Text>
+        <Text style={styles.subtitle}>Activo desde {formattedDate}</Text>  
 
         {/* PUNTOS */}
         <View style={styles.pointsRow}>
@@ -212,6 +220,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366F1',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
 
   infoContainer: {
