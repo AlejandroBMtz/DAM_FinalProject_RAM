@@ -11,7 +11,7 @@ export default function TicketScreen({ route }) {
 
   const [creator, setCreator] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  
+
   // Estados para el Modal de Reporte
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
@@ -88,7 +88,7 @@ export default function TicketScreen({ route }) {
 
   const crearConversacion = async () => {
     try {
-      // 1. Crear la conversacion vinculada al ID del ticket
+      // conversacion 
       const convoRef = await addDoc(collection(db, "conversaciones"), {
         solicitudId: ticketData.id,        // <-- Vinculado al problema
         tituloProblema: ticketData.titulo, // <-- Guardamos el título para mostrarlo
@@ -98,11 +98,10 @@ export default function TicketScreen({ route }) {
         ultimaActividad: new Date().toISOString()
       });
 
-      // 2. Cambiar el estado del ticket a 'en proceso'
+      // estado del ticket
       const ticketRef = doc(db, 'solicitudes', ticketData.id);
       await updateDoc(ticketRef, { estado: 'en proceso' });
 
-      // 3. Crear el primer mensaje automaticamente
       await addDoc(collection(db, "mensajes"), {
         idConversacion: convoRef.id,
         idUsuario: auth.currentUser.uid,
@@ -110,6 +109,36 @@ export default function TicketScreen({ route }) {
         tiempoEnviado: new Date().toISOString()
       });
 
+      if (ticketData.usuario) {
+        await addDoc(collection(db, 'notificaciones'), {
+          usuarioId: ticketData.usuario,
+          tipo: 'mensaje',
+          titulo: "¡Alguien quiere ayudarte! 🚀",
+          descripcion: `Han aceptado tu ticket: "${ticketData.titulo}".`,
+          leida: false,
+          fecha: new Date().toISOString()
+        });
+      }
+
+      if (creator && creator.pushToken) {
+        const pushMessage = {
+          to: creator.pushToken,
+          sound: 'default',
+          title: "¡Alguien quiere ayudarte! ",
+          body: `Han aceptado tu ticket: "${ticketData.titulo}". Toca para ir al chat.`,
+          data: { conversacionId: convoRef.id },
+        };
+
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(pushMessage),
+        });
+      }
       console.log("Conversación e inicio automático exitosos");
 
       // Construimos la data para la siguiente pantalla
@@ -120,10 +149,9 @@ export default function TicketScreen({ route }) {
         nombre: creator?.nombre || 'Usuario', // Nombre de quien recibe la ayuda
       };
 
-      // Navegar al chat pasando la data necesaria para mostrar el título del problema y el nombre del interlocutor
-      navigation.navigate('Mensajes', { 
-        screen: 'MensajeScreen', 
-        params: { conversacionData: convoData } 
+      navigation.navigate('Mensajes', {
+        screen: 'MensajeScreen',
+        params: { conversacionData: convoData }
       });
 
     } catch (error) {
@@ -138,8 +166,8 @@ export default function TicketScreen({ route }) {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButtonContainer} 
+        <TouchableOpacity
+          style={styles.backButtonContainer}
           onPress={() => navigation.goBack()}
         >
           <View style={styles.backButtonIcon}>
@@ -173,13 +201,13 @@ export default function TicketScreen({ route }) {
 
         {/* TARJETA DE USUARIO */}
         <View style={styles.userCard}>
-          <Image 
+          <Image
             source={
-              creator?.fotoUrl 
-                ? { uri: creator.fotoUrl } 
-                : require('../../../assets/images/Logo.png') 
-            } 
-            style={styles.userAvatar} 
+              creator?.fotoUrl
+                ? { uri: creator.fotoUrl }
+                : require('../../../assets/images/Logo.png')
+            }
+            style={styles.userAvatar}
           />
           <View style={styles.userInfo}>
             <Text style={styles.userName}>
@@ -215,14 +243,14 @@ export default function TicketScreen({ route }) {
         <View style={{ height: 40 }} />
 
         {/* BOTÓN  DE APOYO */}
-      <View style={styles.bottomButtonContainer}>
-        <TouchableOpacity 
-          style={styles.supportButton}
-          onPress={crearConversacion}
-        >
-          <Text style={styles.supportButtonText}>¡Yo te apoyo!</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.bottomButtonContainer}>
+          <TouchableOpacity
+            style={styles.supportButton}
+            onPress={crearConversacion}
+          >
+            <Text style={styles.supportButtonText}>¡Yo te apoyo!</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
 
@@ -233,7 +261,7 @@ export default function TicketScreen({ route }) {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
@@ -242,14 +270,14 @@ export default function TicketScreen({ route }) {
             <View style={styles.dragIndicator} />
 
             <View style={styles.modalHeader}>
-              <Ionicons name="flag" size={32} color="#FF4D4D" style={{marginBottom: 10}}/>
+              <Ionicons name="flag" size={32} color="#FF4D4D" style={{ marginBottom: 10 }} />
               <Text style={styles.modalTitle}>Reportar ticket</Text>
               <Text style={styles.modalSubtitle}>
                 ¿Por qué consideras que este ticket no es apropiado?
               </Text>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{width: '100%'}}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
               {reportReasons.map((item) => (
                 <TouchableOpacity
                   key={item.id}

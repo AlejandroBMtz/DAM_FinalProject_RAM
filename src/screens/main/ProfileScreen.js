@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  ScrollView,
 } from 'react-native';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -100,7 +101,7 @@ const ProfileScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       {/* HEADER */}
@@ -186,7 +187,7 @@ const ProfileScreen = () => {
       >
         <Text style={styles.logoutText}>Cerrar sesión</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 };
 const styles = StyleSheet.create({

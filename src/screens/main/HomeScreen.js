@@ -6,10 +6,10 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { collection, query, where, getDocs, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -207,7 +207,7 @@ export default function FeedScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Feed</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Inicio', { screen: 'Notifications' })}>
           <Ionicons name="notifications" size={24} color="white" />
         </TouchableOpacity>
       </View>

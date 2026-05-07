@@ -8,12 +8,13 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
 // --- Importaciones reales de Firebase ---
 import { auth, db } from '../../services/firebaseConfig';
-import { collection, addDoc } from 'firebase/firestore'; 
+import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 
 export default function Crear({ route, navigation }) {
   const [titulo, setTitulo] = useState('');
@@ -32,9 +33,9 @@ export default function Crear({ route, navigation }) {
   );
 
   const HABILIDADES_INFORMATICA = [
-    'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño', 
-    'JavaScript', 'Algoritmos', 'React Native', 'Node.js', 
-    'UX/UI', 'Figma', 'Recursión', 'Java', 'Express', 
+    'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño',
+    'JavaScript', 'Algoritmos', 'React Native', 'Node.js',
+    'UX/UI', 'Figma', 'Recursión', 'Java', 'Express',
     'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave'
   ];
 
@@ -59,7 +60,7 @@ export default function Crear({ route, navigation }) {
     if (selectedSkills.length === 0) {
       Alert.alert("Atención", "Favor de seleccionar al menos una etiqueta para la solicitud.");
       return;
-    } 
+    }
 
     if (!titulo || !desc) {
       Alert.alert("Error", "Faltan datos de registro.");
@@ -85,7 +86,60 @@ export default function Crear({ route, navigation }) {
       });
       console.log("Éxito");
 
-      navigation.navigate('Tickets', { screen: 'MyTicketsMain' });
+      const usersRef = collection(db, 'users');
+
+      const q = query(usersRef, where('habilidades', 'array-contains-any', selectedSkills));
+      const querySnapshot = await getDocs(q);
+
+      let tokensToNotify = [];
+
+      for (const documento of querySnapshot.docs) {
+        const userData = documento.data();
+
+        // Evitamos al usuario que crea el ticket
+        if (documento.id !== auth.currentUser.uid) {
+
+          // Token toke push
+          await addDoc(collection(db, 'notificaciones'), {
+            usuarioId: documento.id,
+            tipo: 'ticket_match',
+            titulo: 'Ticket que coincide con tus habilidades',
+            descripcion: `Alguien necesita ayuda con: ${selectedSkills.join(', ')}`,
+            leida: false,
+            fecha: new Date().toISOString()
+          });
+
+          // Guardamos el token para el Push
+          if (userData.pushToken) {
+            tokensToNotify.push(userData.pushToken);
+          }
+        }
+      }
+
+      // si se encuentra se envia la notificacion
+      if (tokensToNotify.length > 0) {
+        const pushMessages = tokensToNotify.map(token => ({
+          to: token,
+          sound: 'default',
+          title: "¡Nueva solicitud de ayuda! 🚨",
+          body: `Alguien en la facultad necesita ayuda con: ${selectedSkills.join(', ')}. ¡Gana algo de karma!`,
+          data: { tipo: 'nueva_solicitud' },
+        }));
+
+        //multiples notificaciones
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(pushMessages),
+        });
+        console.log(`Notificaciones enviadas a ${tokensToNotify.length} usuarios.`);
+      }
+
+      navigation.navigate('Inicio', { screen: 'myTicket' });
     } catch (error) {
       console.log("Error en Firebase:", error);
       Alert.alert("Error de Registro", error.message || String(error));
@@ -98,12 +152,12 @@ export default function Crear({ route, navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Pedir ayuda</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Inicio', { screen: 'Notifications' })}>
+        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
           <Ionicons name="notifications" size={24} color="white" />
         </TouchableOpacity>
       </View>
-      
-      <ScrollView 
+
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -135,9 +189,9 @@ export default function Crear({ route, navigation }) {
 
         <Text style={styles.sectionLabel}>NIVEL DE URGENCIA</Text>
         <View style={styles.prioridadesContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.prioBox, 
+              styles.prioBox,
               prioridad === 1 ? styles.prioAltaSelected : styles.prioUnselected
             ]}
             onPress={() => togglePrio(1)}
@@ -147,9 +201,9 @@ export default function Crear({ route, navigation }) {
             <Text style={styles.prioText}>Alta</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.prioBox, 
+              styles.prioBox,
               prioridad === 2 ? styles.prioMediaSelected : styles.prioUnselected
             ]}
             onPress={() => togglePrio(2)}
@@ -159,9 +213,9 @@ export default function Crear({ route, navigation }) {
             <Text style={styles.prioText}>Media</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.prioBox, 
+              styles.prioBox,
               prioridad === 3 ? styles.prioBajaSelected : styles.prioUnselected
             ]}
             onPress={() => togglePrio(3)}
@@ -177,10 +231,10 @@ export default function Crear({ route, navigation }) {
           {HABILIDADES_INFORMATICA.map((skill, index) => {
             const isSelected = selectedSkills.includes(skill);
             return (
-              <TouchableOpacity 
-                key={index} 
+              <TouchableOpacity
+                key={index}
                 style={[
-                  styles.tag, 
+                  styles.tag,
                   isSelected ? styles.tagSelected : styles.tagUnselected
                 ]}
                 onPress={() => toggleSkill(skill)}
@@ -208,7 +262,7 @@ export default function Crear({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#09090B', 
+    backgroundColor: '#09090B',
   },
   header: {
     flexDirection: 'row',
@@ -236,7 +290,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 26,
     fontWeight: "bold",
-    letterSpacing: 2, 
+    letterSpacing: 2,
   },
   creaSub: {
     color: "#878FA9",
@@ -310,7 +364,7 @@ const styles = StyleSheet.create({
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10, 
+    gap: 10,
     marginTop: 5,
   },
   tag: {
@@ -320,25 +374,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tagUnselected: {
-    backgroundColor: '#15171E', 
-    borderColor: '#2D3243',     
+    backgroundColor: '#15171E',
+    borderColor: '#2D3243',
   },
   tagSelected: {
-    backgroundColor: 'rgba(67, 56, 202, 0.15)', 
-    borderColor: '#6C63FF',                     
+    backgroundColor: 'rgba(67, 56, 202, 0.15)',
+    borderColor: '#6C63FF',
   },
   tagText: {
     fontSize: 13,
     fontWeight: '500',
   },
   tagTextUnselected: {
-    color: '#8A8F9E', 
+    color: '#8A8F9E',
   },
   tagTextSelected: {
-    color: '#8B85FF', 
+    color: '#8B85FF',
   },
   submit: {
-    backgroundColor: '#2563EB', 
+    backgroundColor: '#2563EB',
     borderRadius: 8,
     height: 50,
     justifyContent: 'center',

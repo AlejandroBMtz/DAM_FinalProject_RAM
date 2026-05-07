@@ -56,6 +56,7 @@ function MessagesStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MensajesMain" component={MessajesScreen} />
       <Stack.Screen name="MensajeScreen" component={MensajeScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 }
@@ -66,6 +67,16 @@ function MyTicketsStackNavigator() {
       <Stack.Screen name="MyTicketsMain" component={MyTicketsScreen} />
       <Stack.Screen name="EditarTicketScreen" component={EditarTicketScreen} />
       <Stack.Screen name="CrearTicketScreen" component={CreateScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function AgregarStackNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AgregarMain" component={CreateScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 }
@@ -173,7 +184,7 @@ export default function MainNavigator() {
     >
       <Tab.Screen name="Inicio"   component={HomeStackNavigator} />
       <Tab.Screen name="Tickets"  component={MyTicketsStackNavigator} />
-      <Tab.Screen name="Agregar"  component={CreateScreen} />
+      <Tab.Screen name="Agregar"  component={AgregarStackNavigator} />
       <Tab.Screen name="Mensajes" component={MessagesStackNavigator} />
       <Tab.Screen name="Perfil"   component={ProfileStackNavigator} />
     </Tab.Navigator>
