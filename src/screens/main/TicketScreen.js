@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
+import { evaluateBadges } from '../../utils/badges';
 
 export default function TicketScreen({ route }) {
   const navigation = useNavigation();
@@ -148,6 +149,8 @@ export default function TicketScreen({ route }) {
         tituloProblema: ticketData.titulo,
         nombre: creator?.nombre || 'Usuario', // Nombre de quien recibe la ayuda
       };
+
+      await evaluateBadges(); // ← evalúa fast_reply u otras al aceptar un ticket
 
       navigation.navigate('Mensajes', {
         screen: 'MensajeScreen',
