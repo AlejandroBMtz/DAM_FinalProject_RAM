@@ -1,193 +1,169 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  Image,
-  StatusBar,
-} from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Image, StatusBar, Modal, Platform, } from 'react-native';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../../services/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { updatePassword } from 'firebase/auth';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
 
-const EditProfileScreen = ({ navigation }) => {
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  
-  const [nombre, setNombre] = useState('');
-  const [semestre, setSemestre] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
-  const [photoUri, setPhotoUri] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [carrera, setCarrera] = useState('');
-  
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [updatingPassword, setUpdatingPassword] = useState(false);
+const CARRERAS = [
+  'Licenciatura en Informática',
+  'Licenciatura en Administración de las TI',
+  'Ingeniería de Software',
+  'Ingeniería en Computación',
+  'Ingeniería en Telecomunicaciones y Redes',
+  'Ingeniería en Ciencia y Analítica de Datos',
+  'Ingeniería en Tecnologías de Información y Ciberseguridad',
+];
 
-  // Fetch user data
+const SEMESTRES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+const HABILIDADES = [
+  'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño',
+  'JavaScript', 'Algoritmos', 'React Native', 'Node.js',
+  'UX/UI', 'Figma', 'Recursión', 'Java', 'Express',
+  'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave',
+];
+
+export default function EditProfileScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [nombre, setNombre] = useState('');
+  const [carrera, setCarrera] = useState('');
+  const [semestre, setSemestre] = useState('');
+  const [habilidades, setHabilidades] = useState([]);
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  const [modalCarrera, setModalCarrera] = useState(false);
+  const [modalSemestre, setModalSemestre] = useState(false);
+
+
+  //Load data
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetch = async () => {
       if (!auth.currentUser) return;
-      
-      setLoading(true);
       try {
-        const userDocRef = doc(db, 'users', auth.currentUser.uid);
-        const docSnap = await getDoc(userDocRef);
-        
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setNombre(data.nombre || '');
-          setSemestre(data.semestre || '');
-          setCarrera(data.carrera || '');
-          setPhotoUrl(data.fotoPerfil || '');
+        const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (snap.exists()) {
+          const d = snap.data();
+          setNombre(d.nombre || '');
+          setCarrera(d.carrera || '');
+          setSemestre(d.semestre || '');
+          setHabilidades(d.habilidades || []);
+          setPhotoUrl(d.fotoPerfil || '');
         }
-      } catch (error) {
-        Alert.alert('Error', 'No se pudo cargar los datos del perfil');
-        console.error(error);
+      } catch (e) {
+        console.log(e);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchUserData();
+    fetch();
   }, []);
 
-  // Request photo permissions
+  //  Image picker
   useEffect(() => {
     (async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissions();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar tu foto');
+        Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar tu foto.');
       }
     })();
   }, []);
 
   const handlePickImage = async () => {
     try {
-      const mediaTypes =
-        ImagePicker?.MediaType?.Images ||
-        ImagePicker?.MediaTypeOptions?.Images ||
-        ImagePicker?.MediaTypeOptions?.All;
-
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes,
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images || ImagePicker.MediaType?.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-
       if (!result.canceled) {
-        const uri = result.assets[0].uri;
         setSelectedImage(result.assets[0]);
-        setPhotoUri(uri);
-        setPhotoUrl(uri);
+        setPhotoUrl(result.assets[0].uri);
       }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo seleccionar la imagen');
-      console.error(error);
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo seleccionar la imagen.');
     }
   };
 
-  const uploadPhotoToCloudinary = async (imageUri) => {
-    try {
-      if (!auth.currentUser) {
-        throw new Error('Usuario no autenticado');
-      }
-
-      const secureUrl = await uploadImageToCloudinary(imageUri);
-      return secureUrl;
-    } catch (error) {
-      console.error('Cloudinary upload error:', error);
-      throw new Error(error.message || 'Error al subir foto a Cloudinary');
-    }
+  //Skills toggle
+  const toggleSkill = (skill) => {
+    setHabilidades((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
   };
 
-  const handleSaveProfile = async () => {
+  // Save
+  const handleSave = async () => {
     if (!nombre.trim()) {
-      Alert.alert('Error', 'El nombre no puede estar vacío');
+      Alert.alert('Campo requerido', 'El nombre no puede estar vacío.');
+      return;
+    }
+    if (!carrera) {
+      Alert.alert('Campo requerido', 'Por favor selecciona tu carrera.');
+      return;
+    }
+    if (!semestre) {
+      Alert.alert('Campo requerido', 'Por favor selecciona tu semestre.');
+      return;
+    }
+    if (habilidades.length === 0) {
+      Alert.alert('Campo requerido', 'Selecciona al menos una habilidad.');
       return;
     }
 
     setSaving(true);
     try {
-      const userDocRef = doc(db, 'users', auth.currentUser.uid);
       const updateData = {
         nombre: nombre.trim(),
-        semestre: semestre.trim(),
-        carrera: carrera.trim(),
+        carrera,
+        semestre,
+        habilidades,
       };
 
-      // Upload photo if a new one was selected
       if (selectedImage) {
-        const photoUrl = await uploadPhotoToCloudinary(photoUri);
-        updateData.fotoPerfil = photoUrl;
-        setPhotoUrl(photoUrl);
+        const url = await uploadImageToCloudinary(selectedImage.uri);
+        updateData.fotoPerfil = url;
+        setPhotoUrl(url);
+        setSelectedImage(null);
       }
 
-      await updateDoc(userDocRef, updateData);
-      Alert.alert('Éxito', 'Perfil actualizado correctamente');
-      setSelectedImage(null);
-      setPhotoUri(null);
-    } catch (error) {
-      Alert.alert('Error', error.message || 'Error al guardar el perfil');
-      console.error(error);
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), updateData);
+      Alert.alert('¡Listo!', 'Tu perfil fue actualizado correctamente.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo guardar el perfil. Intenta de nuevo.');
+      console.log(e);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleUpdatePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Todos los campos de contraseña son requeridos');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas nuevas no coinciden');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    setUpdatingPassword(true);
-    try {
-      // Note: Firebase doesn't have a direct way to verify current password
-      // This is a security limitation. In production, consider using a backend service.
-      await updatePassword(auth.currentUser, newPassword);
-      Alert.alert('Éxito', 'Contraseña actualizada correctamente');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setShowPasswordForm(false);
-    } catch (error) {
-      if (error.code === 'auth/requires-recent-login') {
-        Alert.alert('Error', 'Por seguridad, por favor inicia sesión nuevamente y luego intenta cambiar tu contraseña');
-      } else {
-        Alert.alert('Error', error.message || 'No se pudo actualizar la contraseña');
+  // Ocultar el TabBar inferior al entrar a esta pantalla
+  useFocusEffect(
+    useCallback(() => {
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.setOptions({ tabBarStyle: { display: 'none' } });
       }
-      console.error(error);
-    } finally {
-      setUpdatingPassword(false);
-    }
-  };
+      return () => {
+        if (parent) {
+          // devolvemos el display a 'flex', el CustomTabBar hara el resto
+          parent.setOptions({ tabBarStyle: { display: 'flex' } });
+        }
+      };
+    }, [navigation])
+  );
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
+      <View style={styles.center}>
         <ActivityIndicator size="large" color="#4F46E5" />
       </View>
     );
@@ -195,353 +171,402 @@ const EditProfileScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#161920" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Editar Perfil</Text>
-          <View style={{ width: 40 }} />
-        </View>
+      <StatusBar barStyle="light-content" />
 
-        {/* Photo Section */}
+      {/*  HEADER  */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="chevron-left" size={22} color="#9CA3AF" />
+          <Text style={styles.backText}>Regresar</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Editar perfil</Text>
+        <View style={{ width: 80 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
+        {/*  FOTO  */}
         <View style={styles.photoSection}>
-          <View style={styles.photoContainer}>
-            {selectedImage?.uri || photoUri || photoUrl ? (
-              <Image
-                source={{ uri: selectedImage?.uri || photoUri || photoUrl }}
-                style={styles.profilePhoto}
-              />
+          <TouchableOpacity style={styles.photoWrapper} onPress={handlePickImage} activeOpacity={0.8}>
+            {photoUrl ? (
+              <Image source={{ uri: photoUrl }} style={styles.photo} />
             ) : (
               <View style={styles.photoPlaceholder}>
-                <MaterialCommunityIcons name="account-circle" size={80} color="#6B7280" />
+                <MaterialCommunityIcons name="account" size={50} color="#4B5563" />
               </View>
             )}
-            <TouchableOpacity style={styles.cameraButton} onPress={handlePickImage}>
-              <MaterialCommunityIcons name="camera" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.photoLabel}>Toca la cámara para cambiar foto</Text>
+            <View style={styles.photoOverlay}>
+              <MaterialCommunityIcons name="camera" size={18} color="#fff" />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.photoHint}>Editar foto</Text>
         </View>
 
-        {/* Form Section */}
-        <View style={styles.formSection}>
-          
-          {/* Nombre */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Nombre</Text>
+        {/*  NOMBRE  */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>NOMBRE</Text>
+          <View style={styles.inputRow}>
+            <MaterialCommunityIcons name="account-outline" size={18} color="#4B5563" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Tu nombre completo"
-              placeholderTextColor="#9CA3AF"
               value={nombre}
               onChangeText={setNombre}
-              editable={!saving}
+              placeholder="Tu nombre completo"
+              placeholderTextColor="#4B5563"
+              autoCapitalize="words"
             />
           </View>
-
-          {/* Carrera */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Carrera</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Tu carrera"
-              placeholderTextColor="#9CA3AF"
-              value={carrera}
-              onChangeText={setCarrera}
-              editable={!saving}
-            />
-          </View>
-
-          {/* Semestre */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Semestre</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ej: 1, 2, 3, etc."
-              placeholderTextColor="#9CA3AF"
-              value={semestre}
-              onChangeText={setSemestre}
-              keyboardType="number-pad"
-              editable={!saving}
-            />
-          </View>
-
-          {/* Save Button */}
-          <TouchableOpacity
-            style={[styles.button, styles.buttonPrimary, saving && styles.buttonDisabled]}
-            onPress={handleSaveProfile}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
-                <Text style={styles.buttonText}>Guardar Cambios</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* Password Section Divider */}
-          <View style={styles.divider} />
-
-          {/* Password Toggle */}
-          {!showPasswordForm ? (
-            <TouchableOpacity
-              style={[styles.button, styles.buttonSecondary]}
-              onPress={() => setShowPasswordForm(true)}
-            >
-              <MaterialCommunityIcons name="lock" size={20} color="#4F46E5" />
-              <Text style={styles.buttonTextSecondary}>Cambiar Contraseña</Text>
-            </TouchableOpacity>
-          ) : (
-            <>
-              {/* Password Form */}
-              <View style={styles.passwordForm}>
-                <Text style={styles.passwordFormTitle}>Cambiar Contraseña</Text>
-                
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Contraseña Actual</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Tu contraseña actual"
-                    placeholderTextColor="#9CA3AF"
-                    value={currentPassword}
-                    onChangeText={setCurrentPassword}
-                    secureTextEntry
-                    editable={!updatingPassword}
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Nueva Contraseña</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nueva contraseña"
-                    placeholderTextColor="#9CA3AF"
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    secureTextEntry
-                    editable={!updatingPassword}
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Confirmar Nueva Contraseña</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirmar contraseña"
-                    placeholderTextColor="#9CA3AF"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    editable={!updatingPassword}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.button, styles.buttonPrimary, updatingPassword && styles.buttonDisabled]}
-                  onPress={handleUpdatePassword}
-                  disabled={updatingPassword}
-                >
-                  {updatingPassword ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
-                      <Text style={styles.buttonText}>Actualizar Contraseña</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.button, styles.buttonCancel]}
-                  onPress={() => {
-                    setShowPasswordForm(false);
-                    setCurrentPassword('');
-                    setNewPassword('');
-                    setConfirmPassword('');
-                  }}
-                  disabled={updatingPassword}
-                >
-                  <Text style={styles.buttonTextCancel}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-
         </View>
+
+        {/*  CARRERA  */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>CARRERA</Text>
+          <TouchableOpacity style={styles.selector} onPress={() => setModalCarrera(true)} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="school-outline" size={18} color="#4B5563" style={styles.inputIcon} />
+            <Text style={[styles.selectorText, !carrera && styles.placeholder]} numberOfLines={1}>
+              {carrera || 'Selecciona tu carrera'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#4B5563" />
+          </TouchableOpacity>
+        </View>
+
+        {/* SEMESTRE  */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>SEMESTRE</Text>
+          <TouchableOpacity style={styles.selector} onPress={() => setModalSemestre(true)} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="calendar-outline" size={18} color="#4B5563" style={styles.inputIcon} />
+            <Text style={[styles.selectorText, !semestre && styles.placeholder]}>
+              {semestre ? `${semestre}° Semestre` : 'Selecciona tu semestre'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#4B5563" />
+          </TouchableOpacity>
+        </View>
+
+        {/* HABILIDADES */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>HABILIDADES</Text>
+          <Text style={styles.fieldHint}>Selecciona las áreas en las que puedes apoyar</Text>
+          <View style={styles.tagsGrid}>
+            {HABILIDADES.map((skill) => {
+              const active = habilidades.includes(skill);
+              return (
+                <TouchableOpacity
+                  key={skill}
+                  style={[styles.tag, active && styles.tagActive]}
+                  onPress={() => toggleSkill(skill)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tagText, active && styles.tagTextActive]}>{skill}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/*SAVE BUTTON*/}
+        <TouchableOpacity
+          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+          activeOpacity={0.85}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveBtnText}>Guardar cambios</Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/*MODAL CARRERA */}
+      <Modal visible={modalCarrera} transparent animationType="slide" onRequestClose={() => setModalCarrera(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.dragHandle} />
+            <Text style={styles.modalTitle}>Selecciona tu carrera</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {CARRERAS.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[styles.modalOption, carrera === item && styles.modalOptionActive]}
+                  onPress={() => { setCarrera(item); setModalCarrera(false); }}
+                >
+                  <Text style={[styles.modalOptionText, carrera === item && styles.modalOptionTextActive]}>
+                    {item}
+                  </Text>
+                  {carrera === item && <Ionicons name="checkmark" size={16} color="#4F46E5" />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/*  MODAL SEMESTRE  */}
+      <Modal visible={modalSemestre} transparent animationType="slide" onRequestClose={() => setModalSemestre(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { maxHeight: '55%' }]}>
+            <View style={styles.dragHandle} />
+            <Text style={styles.modalTitle}>Selecciona tu semestre</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {SEMESTRES.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[styles.modalOption, semestre === item && styles.modalOptionActive]}
+                  onPress={() => { setSemestre(item); setModalSemestre(false); }}
+                >
+                  <Text style={[styles.modalOptionText, semestre === item && styles.modalOptionTextActive]}>
+                    {item}° Semestre
+                  </Text>
+                  {semestre === item && <Ionicons name="checkmark" size={16} color="#4F46E5" />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F0F19',
+  container: { 
+    flex: 1, 
+    backgroundColor: '#0B0D14' 
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0F0F19',
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#0B0D14' 
   },
-  scrollContent: {
-    paddingBottom: 40,
-  },
+
+  // Header
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#161920',
+    paddingTop: Platform.OS === 'ios' ? 54 : 40,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2D2D3D',
+    borderBottomColor: '#111827',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  backBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center' 
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  backText: { 
+    color: '#9CA3AF', 
+    fontSize: 14, 
+    marginLeft: 2 
   },
-  photoSection: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    backgroundColor: '#161920',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2D2D3D',
+  headerTitle: { 
+    color: '#FFFFFF', 
+    fontSize: 17, 
+    fontWeight: '700' 
   },
-  photoContainer: {
-    position: 'relative',
-    marginBottom: 12,
+
+  scroll: { 
+    paddingHorizontal: 20, 
+    paddingTop: 28 
   },
-  profilePhoto: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#2D2D3D',
+
+  // Photo
+  photoSection: { 
+    alignItems: 'center', 
+    marginBottom: 32 
+  },
+  photoWrapper: { 
+    position: 'relative' 
+  },
+  photo: { 
+    width: 100, 
+    height: 100, 
+    borderRadius: 50, 
+    borderWidth: 2.5, 
+    borderColor: '#4F46E5' 
   },
   photoPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#2D2D3D',
-    justifyContent: 'center',
+    width: 100, 
+    height: 100, 
+    borderRadius: 50,
+    backgroundColor: '#111827', 
+    borderWidth: 2, 
+    borderColor: '#1F2937',
+    justifyContent: 'center', 
     alignItems: 'center',
   },
-  cameraButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  photoOverlay: {
+    position: 'absolute', 
+    bottom: 2, 
+    right: 2,
+    width: 30, 
+    height: 30, 
+    borderRadius: 15,
     backgroundColor: '#4F46E5',
-    justifyContent: 'center',
+    justifyContent: 'center', 
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#161920',
+    borderWidth: 2, 
+    borderColor: '#0B0D14',
   },
-  photoLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontStyle: 'italic',
+  photoHint: { 
+    color: '#6B7280', 
+    fontSize: 12, 
+    marginTop: 10 
   },
-  formSection: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
+
+  // Fields
+  fieldGroup: { 
+    marginBottom: 22 
   },
-  formGroup: {
-    marginBottom: 20,
+  fieldLabel: {
+    color: '#4B5563', 
+    fontSize: 11, 
+    fontWeight: '700',
+    letterSpacing: 1.2, 
+    marginBottom: 8, 
+    marginLeft: 2,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E5E7EB',
-    marginBottom: 8,
+  fieldHint: { 
+    color: '#6B7280', 
+    fontSize: 12, 
+    marginBottom: 10, 
+    marginLeft: 2 
   },
-  input: {
-    backgroundColor: '#2D2D3D',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#FFFFFF',
+
+  inputRow: {
+    flexDirection: 'row', 
+    alignItems: 'center',
+    backgroundColor: '#111827', 
+    borderRadius: 12,
+    borderWidth: 1, 
+    borderColor: '#1F2937', 
+    paddingHorizontal: 14,
+  },
+  inputIcon: { 
+    marginRight: 10 
+  },
+  input: { 
+    flex: 1, 
+    color: '#FFFFFF', 
+    fontSize: 15, 
+    paddingVertical: 14 
+  },
+
+  selector: {
+    flexDirection: 'row', 
+    alignItems: 'center',
+    backgroundColor: '#111827', 
+    borderRadius: 12,
+    borderWidth: 1, 
+    borderColor: '#1F2937',
+    paddingHorizontal: 14, 
+    paddingVertical: 14,
+  },
+  selectorText: { 
+    flex: 1, 
+    color: '#FFFFFF', 
+    fontSize: 15 
+  },
+  placeholder: { 
+    color: '#4B5563' 
+  },
+
+  // Tags
+  tagsGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: 8 
+  },
+  tag: {
+    paddingVertical: 8, 
+    paddingHorizontal: 14,
+    borderRadius: 20, 
     borderWidth: 1,
-    borderColor: '#4D4D5D',
+    borderColor: '#1F2937', 
+    backgroundColor: '#111827',
   },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+  tagActive: { 
+    borderColor: '#6366F1', 
+    backgroundColor: 'rgba(99,102,241,0.12)' 
+  },
+  tagText: { 
+    color: '#6B7280', 
+    fontSize: 13, 
+    fontWeight: '500' 
+  },
+  tagTextActive: { 
+    color: '#818CF8' 
+  },
+
+  // Save button
+  saveBtn: {
+    backgroundColor: '#4F46E5', 
+    borderRadius: 14,
+    paddingVertical: 16, 
+    alignItems: 'center', 
+    marginTop: 8,
+  },
+  saveBtnDisabled: { 
+    opacity: 0.55 
+  },
+  saveBtnText: { 
+    color: '#FFFFFF', 
+    fontSize: 15, 
+    fontWeight: '700' 
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.7)', 
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#111827',
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20, 
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    maxHeight: '75%',
+  },
+  dragHandle: {
+    width: 38, 
+    height: 4, 
+    backgroundColor: '#1F2937',
+    borderRadius: 2, 
+    alignSelf: 'center', 
+    marginBottom: 18,
+  },
+  modalTitle: {
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontWeight: '700',
+    textAlign: 'center', 
     marginBottom: 12,
   },
-  buttonPrimary: {
-    backgroundColor: '#4F46E5',
+  modalOption: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingVertical: 15, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#1F2937',
   },
-  buttonSecondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#4F46E5',
+  modalOptionActive: { 
+    borderBottomColor: '#1F2937' 
   },
-  buttonCancel: {
-    backgroundColor: '#2D2D3D',
-    borderWidth: 1,
-    borderColor: '#4D4D5D',
+  modalOptionText: { 
+    color: '#9CA3AF', 
+    fontSize: 14, 
+    flex: 1 
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  buttonTextSecondary: {
-    color: '#4F46E5',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  buttonTextCancel: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#4D4D5D',
-    marginVertical: 24,
-  },
-  passwordForm: {
-    backgroundColor: '#1A1A24',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#2D2D3D',
-  },
-  passwordFormTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E5E7EB',
-    marginBottom: 16,
+  modalOptionTextActive: { 
+    color: '#818CF8', 
+    fontWeight: '600' 
   },
 });
-
-export default EditProfileScreen;

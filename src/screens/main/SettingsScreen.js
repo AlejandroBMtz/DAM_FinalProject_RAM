@@ -1,130 +1,306 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Switch, Platform, StatusBar, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { auth } from '../../services/firebaseConfig';
+import { signOut } from 'firebase/auth';
+
+
+
+const SectionLabel = ({ title }) => (
+  <Text style={styles.sectionLabel}>{title}</Text>
+);
+
+const SettingRow = ({ icon, iconColor = '#4F46E5', iconBg = '#1E1B3A', label, onPress, rightElement, labelStyle }) => (
+  <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
+    <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
+      <MaterialCommunityIcons name={icon} size={20} color={iconColor} />
+    </View>
+    <Text style={[styles.rowLabel, labelStyle]}>{label}</Text>
+    {rightElement ?? <MaterialCommunityIcons name="chevron-right" size={20} color="#4B5563" />}
+  </TouchableOpacity>
+);
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
 
-  const handleEditProfile = () => {
-    navigation.navigate('EditProfileScreen');
+  const [notifPush, setNotifPush] = useState(true);
+  const [notifTickets, setNotifTickets] = useState(true);
+  const [notifBadges, setNotifBadges] = useState(true);
+  const [notifMessages, setNotifMessages] = useState(true);
+  const [darkMode, setDarkMode] = useState(true);
+
+  // Ocultar el TabBar inferior al entrar a esta pantalla
+  useFocusEffect(
+    useCallback(() => {
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.setOptions({ tabBarStyle: { display: 'none' } });
+      }
+      return () => {
+        if (parent) {
+          // devolvemos el display a 'flex', el CustomTabBar hara el resto
+          parent.setOptions({ tabBarStyle: { display: 'flex' } });
+        }
+      };
+    }, [navigation])
+  );
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Estás seguro de que deseas salir de tu cuenta?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, salir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut(auth);
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo cerrar la sesión.');
+            }
+          },
+        },
+      ]
+    );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Eliminar cuenta',
+      'Esta acción es irreversible. ¿Seguro que deseas eliminar tu cuenta?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: () => {} },
+      ]
+    );
+  };
+
+  const toggle = (value, setter) => (
+    <Switch
+      value={value}
+      onValueChange={setter}
+      trackColor={{ false: '#2D3243', true: '#4F46E5' }}
+      thumbColor="#FFFFFF"
+      ios_backgroundColor="#2D3243"
+      style={Platform.OS === 'android' ? { transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] } : {}}
+    />
+  );
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.settingsSection}>
-        
-        {/* Edit Profile Option */}
-        <TouchableOpacity 
-          style={styles.settingOption} 
-          onPress={handleEditProfile}
-          activeOpacity={0.7}
-        >
-          <View style={styles.optionIconContainer}>
-            <MaterialCommunityIcons name="account-edit" size={24} color="#4F46E5" />
-          </View>
-          <View style={styles.optionTextContainer}>
-            <Text style={styles.optionTitle}>Editar Perfil</Text>
-            <Text style={styles.optionDescription}>Nombre, foto, semestre y contraseña</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#6B7280" />
-        </TouchableOpacity>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+      <StatusBar barStyle="light-content" />
 
-        {/* Other Settings Options */}
-        <TouchableOpacity 
-          style={styles.settingOption} 
-          onPress={() => alert('Privacidad - Próximamente')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.optionIconContainer}>
-            <MaterialCommunityIcons name="lock" size={24} color="#4F46E5" />
-          </View>
-          <View style={styles.optionTextContainer}>
-            <Text style={styles.optionTitle}>Privacidad</Text>
-            <Text style={styles.optionDescription}>Controla tu privacidad</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#6B7280" />
-        </TouchableOpacity>
+      {/* Back button + title */}
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <MaterialCommunityIcons name="chevron-left" size={22} color="#9CA3AF" />
+        <Text style={styles.backText}>Regresar</Text>
+      </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.settingOption} 
-          onPress={() => alert('Notificaciones - Próximamente')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.optionIconContainer}>
-            <MaterialCommunityIcons name="bell" size={24} color="#4F46E5" />
-          </View>
-          <View style={styles.optionTextContainer}>
-            <Text style={styles.optionTitle}>Notificaciones</Text>
-            <Text style={styles.optionDescription}>Gestiona tus notificaciones</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#6B7280" />
-        </TouchableOpacity>
+      <Text style={styles.screenTitle}>Ajustes</Text>
 
-        <TouchableOpacity 
-          style={styles.settingOption} 
-          onPress={() => alert('Acerca de - Próximamente')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.optionIconContainer}>
-            <MaterialCommunityIcons name="information" size={24} color="#4F46E5" />
-          </View>
-          <View style={styles.optionTextContainer}>
-            <Text style={styles.optionTitle}>Acerca de</Text>
-            <Text style={styles.optionDescription}>Versión y detalles</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#6B7280" />
-        </TouchableOpacity>
-
+      {/* ── CUENTA ── */}
+      <SectionLabel title="CUENTA" />
+      <View style={styles.group}>
+        <SettingRow
+          icon="account-edit-outline"
+          label="Editar datos personales"
+          onPress={() => navigation.navigate('EditProfileScreen')}
+        />
+        <View style={styles.divider} />
+        <SettingRow
+          icon="lock-outline"
+          label="Cambiar contraseña"
+          onPress={() => navigation.navigate('ChangePasswordScreen')}
+        />
+        <View style={styles.divider} />
+        <SettingRow
+          icon="translate"
+          label="Idioma"
+          onPress={() => alert('Próximamente')}
+        />
       </View>
+
+      {/* ── NOTIFICACIONES ── */}
+      <SectionLabel title="NOTIFICACIONES" />
+      <View style={styles.group}>
+        <SettingRow
+          icon="bell-outline"
+          iconColor="#F59E0B"
+          iconBg="#2A1F0A"
+          label="Notificaciones push"
+          rightElement={toggle(notifPush, setNotifPush)}
+        />
+        <View style={styles.divider} />
+        <SettingRow
+          icon="ticket-outline"
+          iconColor="#3B82F6"
+          iconBg="#0A1A2A"
+          label="Tickets que coinciden"
+          rightElement={toggle(notifTickets, setNotifTickets)}
+        />
+        <View style={styles.divider} />
+        <SettingRow
+          icon="medal-outline"
+          iconColor="#A78BFA"
+          iconBg="#1A0A2A"
+          label="Nuevas insignias"
+          rightElement={toggle(notifBadges, setNotifBadges)}
+        />
+        <View style={styles.divider} />
+        <SettingRow
+          icon="message-outline"
+          iconColor="#10B981"
+          iconBg="#0A1F15"
+          label="Mensajes nuevos"
+          rightElement={toggle(notifMessages, setNotifMessages)}
+        />
+      </View>
+
+      {/* ── APARIENCIA ── */}
+      <SectionLabel title="APARIENCIA" />
+      <View style={styles.group}>
+        <SettingRow
+          icon="weather-night"
+          iconColor="#818CF8"
+          iconBg="#1A1B2E"
+          label="Modo oscuro"
+          rightElement={toggle(darkMode, setDarkMode)}
+        />
+      </View>
+
+      {/* ── LEGAL ── */}
+      <SectionLabel title="LEGAL" />
+      <View style={styles.group}>
+        <SettingRow
+          icon="file-document-outline"
+          iconColor="#9CA3AF"
+          iconBg="#1C1F2B"
+          label="Términos de Comunidad"
+          onPress={() => alert('Próximamente')}
+        />
+        <View style={styles.divider} />
+        <SettingRow
+          icon="shield-outline"
+          iconColor="#9CA3AF"
+          iconBg="#1C1F2B"
+          label="Políticas de privacidad"
+          onPress={() => alert('Próximamente')}
+        />
+        <View style={styles.divider} />
+        <SettingRow
+          icon="logout"
+          iconColor="#EE951D"
+          iconBg="#2a2809"
+          label="Cerrar sesión"
+          labelStyle={styles.dangerLabel1}
+          onPress={handleLogout}
+          rightElement={<View />}
+        />
+      </View>
+
+      {/* ── CUENTA PELIGROSA ── */}
+      <SectionLabel title="CUENTA" />
+      <View style={styles.group}>
+        <SettingRow
+          icon="delete-outline"
+          iconColor="#F87171"
+          iconBg="#2A0A0A"
+          label="Eliminar Cuenta"
+          labelStyle={styles.dangerLabel}
+          onPress={handleDeleteAccount}
+          rightElement={<View />}
+        />
+      </View>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F19',
+    backgroundColor: '#0B0D14',
   },
   contentContainer: {
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 55 : 40,
   },
-  settingsSection: {
-    paddingHorizontal: 16,
-  },
-  settingOption: {
+
+  backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161920',
-    borderRadius: 12,
+    marginBottom: 12,
+  },
+  backText: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    marginLeft: 2,
+  },
+
+  screenTitle: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 28,
+    letterSpacing: 0.2,
+  },
+
+  sectionLabel: {
+    color: '#4B5563',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 8,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+
+  group: {
+    backgroundColor: '#111827',
+    borderRadius: 14,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#2D2D3D',
   },
-  optionIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#2D2D3D',
+
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
-  optionTextContainer: {
+
+  rowLabel: {
     flex: 1,
-  },
-  optionTitle: {
+    color: '#E5E7EB',
     fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 2,
+    fontWeight: '500',
   },
-  optionDescription: {
-    fontSize: 12,
-    color: '#9CA3AF',
+
+  dangerLabel: {
+    color: '#F87171',
+  },
+  dangerLabel1: {
+    color: '#EE951D',
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: '#1F2937',
+    marginLeft: 66,
   },
 });
 
