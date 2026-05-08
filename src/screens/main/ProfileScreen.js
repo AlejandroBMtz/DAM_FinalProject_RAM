@@ -30,6 +30,14 @@ const getLevelName = (level) => {
     5: 'Mentor Avanzado',
     6: 'Maestro',
     7: 'Leyenda',
+    8: 'Ícono',
+    9: 'Deidad',
+    10: 'Eterno',
+    11: 'Inmortal',
+    12: 'Supremo',
+    13: 'Omnisciente',
+    14: 'Trascendental',
+    15: 'Divino',
   };
   return names[level] || `Nivel ${level}`;
 };

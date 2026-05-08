@@ -18,6 +18,7 @@ import TicketScreen from '../screens/main/TicketScreen';
 import EditarTicketScreen from '../screens/main/EditTicketScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditProfileScreen from '../screens/settings/EditProfileScreen';
+import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -87,6 +88,7 @@ function ProfileStackNavigator() {
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
       <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
+      <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
     </Stack.Navigator>
   );
 }
