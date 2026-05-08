@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDocs, deleteDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
+import { evaluateBadges } from '../../utils/badges';
 
 const FEEDBACK = [
   "Paciente", "Claro", "Rápido", "Conoce el tema", "Amable"
@@ -93,6 +94,8 @@ export default function MensajeScreen() {
         helpGiven: newHelpGiven
       }, {merge: true})
 
+      await evaluateBadges(); // ← evalúa insignias del ayudante
+
       const solicitanteSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
       const oldHelpAsked = solicitanteSnap.data().helpAsked ? solicitanteSnap.data().helpAsked : 0;
       const newHelpAsked = oldHelpAsked + 1;
@@ -100,6 +103,8 @@ export default function MensajeScreen() {
       await setDoc(doc(db, "users", auth.currentUser.uid), {
         helpAsked: newHelpAsked
       }, {merge: true});
+
+      await evaluateBadges(); // ← evalúa insignias del solicitante
 
       const soliNombre = solicitanteSnap.data().nombre;
 
