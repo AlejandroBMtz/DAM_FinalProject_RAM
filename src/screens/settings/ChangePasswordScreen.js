@@ -21,7 +21,7 @@ const getStrength = (pwd) => {
   return { label: 'Fuerte', color: '#10B981', width: '100%' };
 };
 
-// Reusable field 
+// Reusable field
 const PasswordField = ({ label, value, onChangeText, visible, onToggle, placeholder, error }) => (
   <View style={styles.fieldGroup}>
     <Text style={styles.fieldLabel}>{label}</Text>
@@ -250,7 +250,8 @@ const styles = StyleSheet.create({
   backText: { 
     color: '#9CA3AF', 
     fontSize: 14, 
-    marginLeft: 2 },
+    marginLeft: 2,
+  },
   headerTitle: { 
     color: '#FFFFFF', 
     fontSize: 17, 
@@ -363,7 +364,8 @@ const styles = StyleSheet.create({
     borderRadius: 10, 
     padding: 12,
   },
-  reqItem: { flexDirection: 'row', 
+  reqItem: { 
+    flexDirection: 'row', 
     alignItems: 'center', 
     gap: 4 
   },
