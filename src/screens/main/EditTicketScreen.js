@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View,  Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput, Modal, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-
+import { useNavigation } from '@react-navigation/native';
 // --- Importaciones reales de Firebase ---
 import { db } from '../../services/firebaseConfig';
 import { doc, updateDoc } from 'firebase/firestore'; 
@@ -87,22 +86,6 @@ export default function EditTicketScreen({ route, navigation }) {
       setLoading(false);
     }
   };
-
-  // Ocultar el TabBar inferior al entrar a esta pantalla
-    useFocusEffect(
-      useCallback(() => {
-        const parent = navigation.getParent();
-        if (parent) {
-          parent.setOptions({ tabBarStyle: { display: 'none' } });
-        }
-        return () => {
-          if (parent) {
-            // devolvemos el display a 'flex', el CustomTabBar hara el resto
-            parent.setOptions({ tabBarStyle: { display: 'flex' } });
-          }
-        };
-      }, [navigation])
-    );
 
   return (
     <View style={styles.container}>

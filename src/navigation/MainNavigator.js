@@ -28,6 +28,11 @@ const Stack = createNativeStackNavigator();
 const HIDDEN_ON = new Set([
   'EditProfileScreen',
   'ChangePasswordScreen',
+  'SettingsScreen',
+  'EditarTicketScreen',
+  'TicketScreen',
+  'MensajeScreen',
+  'Notifications',
 ]);
 
 // Configuracion de los iconos por ruta
@@ -106,7 +111,8 @@ function CustomTabBar({ state, descriptors, navigation }) {
 
   // Obtener el nombre real de la pantalla visible dentro del stack anidado
   const focusedRoute = state.routes[state.index];
-  const currentScreenName = getFocusedRouteNameFromRoute(focusedRoute);
+  const currentScreenName =
+    getFocusedRouteNameFromRoute(focusedRoute) ?? focusedRoute.name;
 
   // Ocultar si la pantalla activa está en la lista
   if (HIDDEN_ON.has(currentScreenName)) {

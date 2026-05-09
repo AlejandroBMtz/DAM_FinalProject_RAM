@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
@@ -26,21 +26,6 @@ export default function TicketScreen({ route }) {
     { id: 5, icon: '⚠️', label: 'Otro motivo' },
   ];
 
-  // Ocultar el TabBar inferior al entrar a esta pantalla
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      if (parent) {
-        parent.setOptions({ tabBarStyle: { display: 'none' } });
-      }
-      return () => {
-        if (parent) {
-          // devolvemos el display a 'flex', el CustomTabBar hara el resto
-          parent.setOptions({ tabBarStyle: { display: 'flex' } });
-        }
-      };
-    }, [navigation])
-  );
 
   useEffect(() => {
     const fetchUser = async () => {
