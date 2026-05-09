@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Dimensions,} from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Importaciones de tus pantallas principales
@@ -12,7 +13,7 @@ import MessajesScreen from '../screens/main/MessajesScreen';
 import MensajeScreen from '../screens/main/MensajeScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 
-//Importar las pantallas secundarias
+// Importar las pantallas secundarias
 import NotificationsScreen from '../screens/main/NotificationsScreen';
 import TicketScreen from '../screens/main/TicketScreen';
 import EditarTicketScreen from '../screens/main/EditTicketScreen';
@@ -23,6 +24,11 @@ import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// Pantallas donde el tab bar debe ocultarse
+const HIDDEN_ON = new Set([
+  'EditProfileScreen',
+  'ChangePasswordScreen',
+]);
 
 // Configuracion de los iconos por ruta
 const TAB_ICONS = {
@@ -98,11 +104,13 @@ function CustomTabBar({ state, descriptors, navigation }) {
   const { width } = Dimensions.get('window');
   const tabWidth = width / state.routes.length;
 
+  // Obtener el nombre real de la pantalla visible dentro del stack anidado
   const focusedRoute = state.routes[state.index];
-  const { options } = descriptors[focusedRoute.key];
+  const currentScreenName = getFocusedRouteNameFromRoute(focusedRoute);
 
-  if (options.tabBarStyle?.display === 'none') {
-    return null; // Si tiene display: 'none', no renderizamos la barra inferior
+  // Ocultar si la pantalla activa está en la lista
+  if (HIDDEN_ON.has(currentScreenName)) {
+    return null;
   }
 
   // Posicion X inicial del indicador
@@ -124,7 +132,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
 
   return (
     <View style={[styles.tabBar, { width }]}>
-      {/* Fondo circular morado*/}
+      {/* Fondo circular morado */}
       <Animated.View
         style={[
           styles.indicator,
@@ -132,11 +140,11 @@ function CustomTabBar({ state, descriptors, navigation }) {
         ]}
       />
 
-      {/*Tabs (Sin nombres, solo íconos) */}
+      {/* Tabs (Sin nombres, solo íconos) */}
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused   = state.index === index;
-        const tabData     = TAB_ICONS[route.name]; 
+        const tabData     = TAB_ICONS[route.name];
 
         const onPress = () => {
           const event = navigation.emit({

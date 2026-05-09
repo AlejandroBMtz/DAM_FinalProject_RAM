@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Image, StatusBar, Modal, Platform, } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../../services/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -40,8 +39,7 @@ export default function EditProfileScreen({ navigation }) {
   const [modalCarrera, setModalCarrera] = useState(false);
   const [modalSemestre, setModalSemestre] = useState(false);
 
-
-  //Load data
+  // Load data
   useEffect(() => {
     const fetch = async () => {
       if (!auth.currentUser) return;
@@ -64,7 +62,7 @@ export default function EditProfileScreen({ navigation }) {
     fetch();
   }, []);
 
-  //  Image picker
+  // Image picker
   useEffect(() => {
     (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -91,7 +89,7 @@ export default function EditProfileScreen({ navigation }) {
     }
   };
 
-  //Skills toggle
+  // Skills toggle
   const toggleSkill = (skill) => {
     setHabilidades((prev) =>
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
@@ -144,22 +142,6 @@ export default function EditProfileScreen({ navigation }) {
       setSaving(false);
     }
   };
-
-  // Ocultar el TabBar inferior al entrar a esta pantalla
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      if (parent) {
-        parent.setOptions({ tabBarStyle: { display: 'none' } });
-      }
-      return () => {
-        if (parent) {
-          // devolvemos el display a 'flex', el CustomTabBar hara el resto
-          parent.setOptions({ tabBarStyle: { display: 'flex' } });
-        }
-      };
-    }, [navigation])
-  );
 
   if (loading) {
     return (
@@ -263,7 +245,7 @@ export default function EditProfileScreen({ navigation }) {
           </View>
         </View>
 
-        {/*SAVE BUTTON*/}
+        {/* SAVE BUTTON */}
         <TouchableOpacity
           style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
           onPress={handleSave}
@@ -280,7 +262,7 @@ export default function EditProfileScreen({ navigation }) {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/*MODAL CARRERA */}
+      {/* MODAL CARRERA */}
       <Modal visible={modalCarrera} transparent animationType="slide" onRequestClose={() => setModalCarrera(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
@@ -383,16 +365,16 @@ const styles = StyleSheet.create({
     position: 'relative' 
   },
   photo: { 
-    width: 100, 
-    height: 100, 
-    borderRadius: 50, 
+    width: 140,
+    height: 140, 
+    borderRadius: 70, 
     borderWidth: 2.5, 
     borderColor: '#4F46E5' 
   },
   photoPlaceholder: {
-    width: 100, 
-    height: 100, 
-    borderRadius: 50,
+    width: 140, 
+    height: 140, 
+    borderRadius: 70,
     backgroundColor: '#111827', 
     borderWidth: 2, 
     borderColor: '#1F2937',
