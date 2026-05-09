@@ -3,22 +3,19 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, StatusBa
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDocs, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDocs, deleteDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
 
 const FEEDBACK = [
   "Paciente", "Claro", "Rápido", "Conoce el tema", "Amable"
-]
+];
 
-// Hook: mide la altura real del teclado en el dispositivo actual y la devuelve en tiempo real
-
+// Hook: mide la altura real del teclado en el dispositivo actual
 function useKeyboardHeight() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    // iOS dispara Will* antes de la animación → transición suave sin salto.
-    // Android solo tiene Did*, que igualmente funciona bien.
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
@@ -55,11 +52,11 @@ export default function MensajeScreen() {
 
   const conversacionData = route.params?.conversacionData;
   const title = route.params?.nombre || conversacionData?.nombre || 'Usuario';
-  const fotoUrl = conversacionData?.fotoUrl;
+  const fotoUrl = conversacionData?.fotoPerfil || conversacionData?.fotoUrl;
 
   const [selectedTags, setSelectedTags] = useState([]);
 
-  const esAyudante = (route.params?.conversacionData?.ayudante === auth.currentUser.uid) ? true : false;
+  const esAyudante = conversacionData?.ayudante === auth.currentUser?.uid;
 
   const toggleTag = (tag) => {
     if (selectedTags.includes(tag)) {
@@ -69,66 +66,75 @@ export default function MensajeScreen() {
     }
   };
 
-  const performTermination = async () => {
+  // ─── Marcar como leído al entrar al chat ───────────────────────────────────
+  // Resetea el contador de no leídos del usuario actual en esta conversación
+  const marcarComoLeido = useCallback(async () => {
     const convoUid = conversacionData?.id;
-
-    if (!convoUid) {
-      return;
-    }
+    const currentUid = auth.currentUser?.uid;
+    if (!convoUid || !currentUid) return;
 
     try {
+      const noLeidosKey = `noLeidos_${currentUid}`;
+      await updateDoc(doc(db, 'conversaciones', convoUid), {
+        [noLeidosKey]: 0,
+      });
+    } catch (error) {
+      console.log('Error al marcar como leído:', error);
+    }
+  }, [conversacionData?.id]);
 
-      const ayudante = route.params?.conversacionData?.ayudante;
+  // Se ejecuta cada vez que la pantalla gana foco
+  useFocusEffect(
+    useCallback(() => {
+      marcarComoLeido();
+    }, [marcarComoLeido])
+  );
+  
+  const performTermination = async () => {
+    const convoUid = conversacionData?.id;
+    if (!convoUid) return;
 
+    try {
+      const ayudante = conversacionData?.ayudante;
       const userSnap = await getDoc(doc(db, 'users', ayudante));
 
-      const oldRating = userSnap.data().rated ? userSnap.data().rated : 0;
-      const oldHelpGiven = userSnap.data().helpGiven ? userSnap.data().helpGiven : 0;
-
+      const oldRating = userSnap.data().rated || 0;
+      const oldHelpGiven = userSnap.data().helpGiven || 0;
       const newRating = ((oldRating * oldHelpGiven) + rating) / (oldHelpGiven + 1);
-
       const newHelpGiven = oldHelpGiven + 1;
 
-      await setDoc(doc(db, "users", ayudante), {
+      await setDoc(doc(db, 'users', ayudante), {
         rated: newRating,
-        helpGiven: newHelpGiven
-      }, {merge: true})
+        helpGiven: newHelpGiven,
+      }, { merge: true });
 
-      await evaluateBadges(); // ← evalúa insignias del ayudante
+      await evaluateBadges();
 
-      const solicitanteSnap = await getDoc(doc(db, "users", auth.currentUser.uid));
-      const oldHelpAsked = solicitanteSnap.data().helpAsked ? solicitanteSnap.data().helpAsked : 0;
-      const newHelpAsked = oldHelpAsked + 1;
+      const solicitanteSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      const oldHelpAsked = solicitanteSnap.data().helpAsked || 0;
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        helpAsked: oldHelpAsked + 1,
+      }, { merge: true });
 
-      await setDoc(doc(db, "users", auth.currentUser.uid), {
-        helpAsked: newHelpAsked
-      }, {merge: true});
-
-      await evaluateBadges(); // ← evalúa insignias del solicitante
+      await evaluateBadges();
 
       const soliNombre = solicitanteSnap.data().nombre;
-
-      const notifTitulo = `${soliNombre} te dejó una reseña`;
-
-      await addDoc(collection(db, "notificaciones"), {
-        tipo: "feedback",
-        titulo: notifTitulo,
+      await addDoc(collection(db, 'notificaciones'), {
+        tipo: 'feedback',
+        titulo: `${soliNombre} te dejó una reseña`,
         desc: feedback,
         usuario: ayudante,
-        tags: selectedTags
-      })
+        tags: selectedTags,
+      });
 
-      // Delete messages
+      // Eliminar mensajes
       const msgRef = collection(db, 'mensajes');
       const q = query(msgRef, where('idConversacion', '==', convoUid));
       const querySnapshot = await getDocs(q);
-      const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
-      await Promise.all(deletePromises);
+      await Promise.all(querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref)));
 
-      // Delete conversation
+      // Eliminar conversación y ticket
       await deleteDoc(doc(db, 'conversaciones', convoUid));
-
-      // Delete ticket
       await deleteDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
 
       console.log('Terminación exitosa');
@@ -139,10 +145,9 @@ export default function MensajeScreen() {
     }
   };
 
-  // Enviar mensaj
+  // Enviar mensaje
   const handleSend = async () => {
     const convoUid = conversacionData?.id;
-
     if (message.trim() === '') return;
 
     setLoading(true);
@@ -154,47 +159,44 @@ export default function MensajeScreen() {
         texto: message,
         tiempoEnviado: new Date().toISOString(),
       });
-      await setDoc(
-        doc(db, 'conversaciones', convoUid),
-        {
-          ultimoMensaje: message,
-          ultimaActividad: new Date().toISOString(),
-        },
-        { merge: true }
-      );
-      // Quien envia el mensaje
+
+      // Determinar quién es el destinatario
       const currentUid = auth.currentUser.uid;
-      // quien es quien 
       const otherUid = conversacionData.solicitante === currentUid
         ? conversacionData.ayudante
         : conversacionData.solicitante;
 
-      // Buscar el token del otro
-      if (otherUid) {
+      // Incrementar contador de no leídos del destinatario
+      const noLeidosKey = `noLeidos_${otherUid}`;
+      await updateDoc(doc(db, 'conversaciones', convoUid), {
+        ultimoMensaje: message,
+        ultimaActividad: new Date().toISOString(),
+        [noLeidosKey]: increment(1),
+      });
 
+      // Notificación in-app
+      if (otherUid) {
         await addDoc(collection(db, 'notificaciones'), {
           usuarioId: otherUid,
           tipo: 'mensaje',
-          titulo: `Nuevo mensaje`,
+          titulo: 'Nuevo mensaje',
           descripcion: message.length > 30 ? message.substring(0, 30) + '...' : message,
           leida: false,
-          fecha: new Date().toISOString()
+          fecha: new Date().toISOString(),
         });
 
+        // Push notification
         const otherUserSnap = await getDoc(doc(db, 'users', otherUid));
         if (otherUserSnap.exists()) {
           const otherUserData = otherUserSnap.data();
-
           if (otherUserData.pushToken) {
-            // peticion al servidor
             const pushMessage = {
               to: otherUserData.pushToken,
               sound: 'default',
               title: `Nuevo mensaje de ${auth.currentUser.displayName || 'un compañero'}`,
               body: message,
-              data: { conversacionId: convoUid }, // Datos extra para saber qué chat abrir si la tocan
+              data: { conversacionId: convoUid },
             };
-
             await fetch('https://exp.host/--/api/v2/push/send', {
               method: 'POST',
               headers: {
@@ -204,7 +206,6 @@ export default function MensajeScreen() {
               },
               body: JSON.stringify(pushMessage),
             });
-            console.log("Notificación enviada al token:", otherUserData.pushToken);
           }
         }
       }
@@ -218,10 +219,7 @@ export default function MensajeScreen() {
 
   const cancelar = async () => {
     const convoUid = conversacionData?.id;
-
-    if (!convoUid) {
-      return;
-    }
+    if (!convoUid) return;
 
     Alert.alert(
       'Confirmar Cancelación',
@@ -233,17 +231,13 @@ export default function MensajeScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Delete messages
               const msgRef = collection(db, 'mensajes');
               const q = query(msgRef, where('idConversacion', '==', convoUid));
               const querySnapshot = await getDocs(q);
-              const deletePromises = querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
-              await Promise.all(deletePromises);
+              await Promise.all(querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref)));
 
-              // Delete conversation
               await deleteDoc(doc(db, 'conversaciones', convoUid));
 
-              // Update ticket status
               const solRef = doc(db, 'solicitudes', conversacionData.solicitudId);
               await setDoc(solRef, { estado: 'disponible' }, { merge: true });
 
@@ -261,10 +255,7 @@ export default function MensajeScreen() {
 
   const terminar = async () => {
     const convoUid = conversacionData?.id;
-
-    if (!convoUid) {
-      return;
-    }
+    if (!convoUid) return;
 
     Alert.alert(
       'Confirmar Terminación',
@@ -284,10 +275,9 @@ export default function MensajeScreen() {
     );
   };
 
-  //escuchar mensajes en tiempo real
+  // Escuchar mensajes en tiempo real
   const obtenerMensajes = () => {
     const convoUid = conversacionData?.id;
-
     if (!convoUid) {
       setMensajes([]);
       setLoading(false);
@@ -317,26 +307,10 @@ export default function MensajeScreen() {
       }
     );
 
-    // Devolver unsub para limpiar el listener al desmontar
     return unsub;
   };
 
-  // Ocultar TabBar al entrar
-  useFocusEffect(
-    useCallback(() => {
-      const parent = navigation.getParent();
-      if (parent) {
-        parent.setOptions({ tabBarStyle: { display: 'none' } });
-      }
-      return () => {
-        if (parent) {
-          parent.setOptions({ tabBarStyle: { display: 'flex' } });
-        }
-      };
-    }, [navigation])
-  );
-
-  // Montar listener
+  // Montar listener de mensajes
   useEffect(() => {
     const unsub = obtenerMensajes();
     return () => {
@@ -344,7 +318,7 @@ export default function MensajeScreen() {
     };
   }, []);
 
-  //Scroll al último mensaje
+  // Scroll al último mensaje
   useEffect(() => {
     if (mensajes.length > 0) {
       setTimeout(() => {
@@ -353,7 +327,7 @@ export default function MensajeScreen() {
     }
   }, [mensajes]);
 
-  //Scroll al abrir teclado
+  // Scroll al abrir teclado
   useEffect(() => {
     if (keyboardHeight > 0) {
       setTimeout(() => {
@@ -366,7 +340,7 @@ export default function MensajeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0D14" />
 
-      {/*HEADER */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
@@ -394,7 +368,7 @@ export default function MensajeScreen() {
         )}
       </View>
 
-      {/*areas de mensaje*/}
+      {/* Área de mensajes */}
       <ImageBackground
         source={require('../../../assets/images/FondoChat.png')}
         style={styles.background}
@@ -430,7 +404,7 @@ export default function MensajeScreen() {
         </ScrollView>
       </ImageBackground>
 
-      {/* barra de imput */}
+      {/* Barra de input */}
       <View style={[styles.inputRow, { marginBottom: keyboardHeight }]}>
         <View style={styles.inputLeftIcons}>
           <Ionicons name="mail-outline" size={22} color="#8A8F9E" />
@@ -459,6 +433,7 @@ export default function MensajeScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Modal de calificación */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -468,7 +443,7 @@ export default function MensajeScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>¡Califica el apoyo!</Text>
-            <Text style={styles.modalSubtitle}>¿Cómo fue tu experienca?</Text>
+            <Text style={styles.modalSubtitle}>¿Cómo fue tu experiencia?</Text>
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity key={star} onPress={() => setRating(star)}>
@@ -484,21 +459,14 @@ export default function MensajeScreen() {
             <View style={styles.tagsContainer}>
               {FEEDBACK.map((tag, index) => {
                 const isSelected = selectedTags.includes(tag);
-                
                 return (
-                  <TouchableOpacity 
-                    key={index} 
-                    style={[
-                      styles.tag, 
-                      isSelected ? styles.tagSelected : styles.tagUnselected
-                    ]}
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.tag, isSelected ? styles.tagSelected : styles.tagUnselected]}
                     onPress={() => toggleTag(tag)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[
-                      styles.tagText,
-                      isSelected ? styles.tagTextSelected : styles.tagTextUnselected
-                    ]}>
+                    <Text style={[styles.tagText, isSelected ? styles.tagTextSelected : styles.tagTextUnselected]}>
                       {tag}
                     </Text>
                   </TouchableOpacity>
@@ -682,10 +650,55 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 10,
   },
+  modalSubtitle: {
+    color: '#999999',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
   starsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 20,
+  },
+  modalFeedback: {
+    color: '#999',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'left',
+    marginBottom: 20,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+    justifyContent: 'center',
+  },
+  tag: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  tagUnselected: {
+    backgroundColor: '#1C1F2B',
+    borderColor: '#2D3243',
+  },
+  tagSelected: {
+    backgroundColor: 'rgba(67, 56, 202, 0.15)',
+    borderColor: '#6C63FF',
+  },
+  tagText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tagTextUnselected: {
+    color: '#7E8494',
+  },
+  tagTextSelected: {
+    color: '#8B85FF',
   },
   feedbackInput: {
     borderWidth: 1,
@@ -705,51 +718,5 @@ const styles = StyleSheet.create({
   submitText: {
     color: '#FFF',
     fontSize: 16,
-  },
-  modalSubtitle: {
-    color: '#999999',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  modalFeedback: {
-    color: '#999',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'left',
-    marginBottom: 20,
-  },
-  
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12, 
-    marginBottom: 20,
-    justifyContent: "center"
-  },
-  tag: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  tagUnselected: {
-    backgroundColor: '#1C1F2B', 
-    borderColor: '#2D3243',     
-  },
-  tagSelected: {
-    backgroundColor: 'rgba(67, 56, 202, 0.15)', 
-    borderColor: '#6C63FF',                     
-  },
-  tagText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  tagTextUnselected: {
-    color: '#7E8494', 
-  },
-  tagTextSelected: {
-    color: '#8B85FF', 
   },
 });

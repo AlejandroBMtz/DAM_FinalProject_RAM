@@ -1,6 +1,6 @@
-import React, { useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
-import { collection, query, where, getDocs, orderBy, or, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, or, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,13 +11,13 @@ export default function MensajesScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Formateador de tiempo para mostrar "hace X minutos", "ayer", o la fecha si es más antiguo
+  // Formateador de tiempo
   const formatTime = (isoString) => {
     if (!isoString) return '';
     const date = new Date(isoString);
     const now = new Date();
     const diffDias = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDias === 0 && now.getDate() === date.getDate()) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDias === 1 || (diffDias === 0 && now.getDate() !== date.getDate())) {
@@ -33,22 +33,23 @@ export default function MensajesScreen() {
   const getUserData = async (solicitante, ayudante) => {
     const currentUid = auth.currentUser?.uid;
     const otherUid = solicitante === currentUid ? ayudante : solicitante;
-    if (!otherUid) return { nombre: '', fotoUrl: null };
+    if (!otherUid) return { nombre: '', fotoPerfil: null };
 
     try {
       const userRef = doc(db, 'users', otherUid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const data = userSnap.data();
-        return { nombre: data.nombre || '', fotoUrl: data.fotoUrl || null };
+        // El campo correcto en Firestore es fotoPerfil, no fotoUrl
+        return { nombre: data.nombre || '', fotoPerfil: data.fotoPerfil || null };
       }
     } catch (error) {
       console.log('Error al obtener info del usuario:', error);
     }
-    return { nombre: '', fotoUrl: null };
+    return { nombre: '', fotoPerfil: null };
   };
 
-  const obtenerConversaciones = async () => {
+  const obtenerConversaciones = () => {
     if (!auth.currentUser) return;
     const userUid = auth.currentUser.uid;
 
@@ -60,17 +61,24 @@ export default function MensajesScreen() {
           where('solicitante', '==', userUid),
           where('ayudante', '==', userUid)
         ),
-        orderBy('ultimaActividad', 'desc') // Mostrar los mas recientes arriba
+        orderBy('ultimaActividad', 'desc')
       );
 
       const unsub = onSnapshot(q, async (querySnapshot) => {
         const results = await Promise.all(querySnapshot.docs.map(async (docSnap) => {
           const data = docSnap.data();
           const userInfo = await getUserData(data.solicitante, data.ayudante);
+
+          // Leer el campo de no leídos correspondiente al usuario actual.
+          // Se guarda como noLeidos_<uid> para diferenciar por participante.
+          const noLeidosKey = `noLeidos_${userUid}`;
+          const noLeidos = data[noLeidosKey] || 0;
+
           return {
             id: docSnap.id,
             nombre: userInfo.nombre,
-            fotoUrl: userInfo.fotoUrl,
+            fotoPerfil: userInfo.fotoPerfil,
+            noLeidos,
             ...data,
           };
         }));
@@ -78,6 +86,7 @@ export default function MensajesScreen() {
         setLoading(false);
       });
 
+      return unsub;
     } catch (error) {
       console.log('Error al obtener conversaciones:', error);
       setLoading(false);
@@ -85,11 +94,14 @@ export default function MensajesScreen() {
   };
 
   useEffect(() => {
-    obtenerConversaciones();
+    const unsub = obtenerConversaciones();
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
   }, []);
 
-  const filteredConversaciones = conversaciones.filter(c => 
-    c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredConversaciones = conversaciones.filter(c =>
+    c.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.tituloProblema && c.tituloProblema.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -120,36 +132,63 @@ export default function MensajesScreen() {
         <Text style={styles.infoText}>No tienes conversaciones activas.</Text>
       ) : (
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {filteredConversaciones.map((convo) => (
-            <TouchableOpacity 
-              key={convo.id}
-              style={styles.chatRow}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('MensajeScreen', { conversacionData: convo })}
-            >
-              <Image 
-                source={convo.fotoUrl ? { uri: convo.fotoUrl } : require('../../../assets/images/Logo.png')} 
-                style={styles.avatar} 
-              />
-              
-              <View style={styles.chatInfoContainer}>
-                <View style={styles.chatHeaderRow}>
-                  <Text style={styles.chatName}>{convo.nombre || "Usuario"}</Text>
-                  <Text style={styles.chatTime}>{formatTime(convo.ultimaActividad)}</Text>
+          {filteredConversaciones.map((convo) => {
+            const tieneNoLeidos = convo.noLeidos > 0;
+
+            return (
+              <TouchableOpacity
+                key={convo.id}
+                style={styles.chatRow}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('MensajeScreen', { conversacionData: convo })}
+              >
+                {/* Avatar */}
+                <Image
+                  source={
+                    convo.fotoPerfil
+                      ? { uri: convo.fotoPerfil }
+                      : require('../../../assets/images/Logo.png')
+                  }
+                  style={styles.avatar}
+                />
+
+                <View style={styles.chatInfoContainer}>
+                  <View style={styles.chatHeaderRow}>
+                    {/* Nombre en blanco brillante si hay no leídos */}
+                    <Text style={[styles.chatName, tieneNoLeidos && styles.chatNameUnread]}>
+                      {convo.nombre || 'Usuario'}
+                    </Text>
+                    <View style={styles.chatMetaRight}>
+                      <Text style={[styles.chatTime, tieneNoLeidos && styles.chatTimeUnread]}>
+                        {formatTime(convo.ultimaActividad)}
+                      </Text>
+                      {/* Badge de no leídos */}
+                      {tieneNoLeidos && (
+                        <View style={styles.unreadBadge}>
+                          <Text style={styles.unreadBadgeText}>
+                            {convo.noLeidos > 99 ? '99+' : convo.noLeidos}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Título del problema */}
+                  <Text style={styles.chatTitle} numberOfLines={1}>
+                    {convo.tituloProblema || 'Problema no especificado'}
+                  </Text>
+
+                  {/* Último mensaje — en blanco si hay no leídos */}
+                  <Text
+                    style={[styles.chatMessage, tieneNoLeidos && styles.chatMessageUnread]}
+                    numberOfLines={1}
+                  >
+                    {convo.ultimoMensaje || ''}
+                  </Text>
                 </View>
-                
-                {/* Título del problema - Truncado con numberOfLines=1 */}
-                <Text style={styles.chatTitle} numberOfLines={1}>
-                  {convo.tituloProblema || "Problema no especificado"}
-                </Text>
-                
-                {/* Último mensaje - Truncado con numberOfLines=1 */}
-                <Text style={styles.chatMessage} numberOfLines={1}>
-                  {convo.ultimoMensaje || ""}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       )}
     </View>
@@ -207,7 +246,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#161920', // Lnea sutil separadora
+    borderBottomColor: '#161920',
   },
   avatar: {
     width: 55,
@@ -227,13 +266,41 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   chatName: {
-    color: '#FFF',
+    color: '#9CA3AF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  chatNameUnread: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  chatMetaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   chatTime: {
     color: '#5E6376',
     fontSize: 12,
+  },
+  chatTimeUnread: {
+    color: '#6C63FF',
+    fontWeight: '600',
+  },
+  // Badge circular de no leídos
+  unreadBadge: {
+    backgroundColor: '#6C63FF',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  unreadBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   chatTitle: {
     color: '#6A8DFF',
@@ -242,7 +309,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   chatMessage: {
-    color: '#8A8F9E',
+    color: '#5E6376',
     fontSize: 14,
+  },
+  chatMessageUnread: {
+    color: '#D1D5DB',
+    fontWeight: '500',
   },
 });
