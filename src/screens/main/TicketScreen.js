@@ -204,21 +204,21 @@ export default function TicketScreen({ route }) {
 
         {/* TARJETA DE USUARIO */}
         <View style={styles.userCard}>
-          <Image
-            source={
-              creator?.fotoUrl
-                ? { uri: creator.fotoUrl }
-                : require('../../../assets/images/Logo.png')
-            }
-            style={styles.userAvatar}
-          />
+          <Image source={
+            creator?.fotoPerfil ? { uri: creator.fotoPerfil } : require('../../../assets/images/Logo.png')
+          }
+          style={styles.userAvatar} />
+
           <View style={styles.userInfo}>
             <Text style={styles.userName}>
               {loadingUser ? 'Cargando...' : (creator?.nombre || 'Usuario Desconocido')}
             </Text>
+
             <Text style={styles.userCareer}>
-              {creator?.carrera || 'Estudiante'} {creator?.semestre ? `- ${creator.semestre}° Semestre` : ''}
+              {creator?.carrera || 'Estudiante'} 
+              {creator?.semestre ? ` - ${creator.semestre}° Semestre` : ''}
             </Text>
+
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={14} color="#FFD166" />
               <Text style={styles.ratingText}>
