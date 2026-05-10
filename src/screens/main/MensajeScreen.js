@@ -6,6 +6,8 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDocs, deleteDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadImageToCloudinary } from '../../services/cloudinary';
 
 const FEEDBACK = [
   "Paciente", "Claro", "Rápido", "Conoce el tema", "Amable"
@@ -55,6 +57,8 @@ export default function MensajeScreen() {
   const fotoUrl = conversacionData?.fotoPerfil || conversacionData?.fotoUrl;
 
   const [selectedTags, setSelectedTags] = useState([]);
+ 
+  const [imagenVisor, setImagenVisor] = useState(null); // Para mostrar la imagen en grande al tocarla
 
   const esAyudante = conversacionData?.ayudante === auth.currentUser?.uid;
 
@@ -214,6 +218,55 @@ export default function MensajeScreen() {
     } finally {
       setLoading(false);
       setMessage('');
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.7,
+      });
+
+      if (result.canceled) return;
+
+      setLoading(true);
+      const uri = result.assets[0].uri;
+
+      const imageUrl = await uploadImageToCloudinary(uri);
+
+      const convoUid = conversacionData?.id;
+      const currentUid = auth.currentUser.uid;
+      const otherUid = conversacionData.solicitante === currentUid
+        ? conversacionData.ayudante
+        : conversacionData.solicitante;
+
+      await addDoc(collection(db, 'mensajes'), {
+        idConversacion: convoUid,
+        idUsuario: currentUid,
+        tipo: 'imagen',
+        imageUrl,
+        tiempoEnviado: new Date().toISOString(),
+      });
+
+      await updateDoc(doc(db, 'conversaciones', convoUid), {
+        ultimoMensaje: '📷 Foto',
+        ultimaActividad: new Date().toISOString(),
+        [`noLeidos_${otherUid}`]: increment(1),
+      });
+
+    } catch (error) {
+      console.log('ERROR:', error);
+      Alert.alert('Error', 'No se pudo enviar la imagen.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -396,7 +449,17 @@ export default function MensajeScreen() {
                     esMio ? styles.cuerpoEnviado : styles.cuerpoRecibido,
                   ]}
                 >
-                  <Text style={styles.textoMensaje}>{msg.texto}</Text>
+                  {msg.tipo === 'imagen' ? (
+                    <TouchableOpacity onPress={() => setImagenVisor(msg.imageUrl)} activeOpacity={0.9}>
+                      <Image
+                        source={{ uri: msg.imageUrl }}
+                        style={styles.imagenMensaje}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.textoMensaje}>{msg.texto}</Text>
+                  )}
                 </View>
               );
             })
@@ -420,7 +483,7 @@ export default function MensajeScreen() {
           multiline={true}
         />
 
-        <TouchableOpacity style={styles.attachButton}>
+        <TouchableOpacity style={styles.attachButton} onPress={handlePickImage}>
           <Ionicons name="attach-outline" size={26} color="#8A8F9E" />
         </TouchableOpacity>
 
@@ -492,6 +555,29 @@ export default function MensajeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Visor de imagen en pantalla completa */}
+      <Modal
+        visible={!!imagenVisor}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setImagenVisor(null)}
+      >
+        <TouchableOpacity
+          style={styles.visorOverlay}
+          activeOpacity={1}
+          onPress={() => setImagenVisor(null)}
+        >
+          <Image
+            source={{ uri: imagenVisor }}
+            style={styles.visorImagen}
+            resizeMode="contain"
+          />
+          <TouchableOpacity style={styles.visorCerrar} onPress={() => setImagenVisor(null)}>
+            <Ionicons name="close" size={28} color="#FFF" />
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
@@ -718,5 +804,28 @@ const styles = StyleSheet.create({
   submitText: {
     color: '#FFF',
     fontSize: 16,
+  },
+  imagenMensaje: {
+  width: 220,
+  height: 180,
+  borderRadius: 12,
+  },
+  visorOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.95)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  },
+visorImagen: {
+  width: '100%',
+  height: '85%',
+  },
+visorCerrar: {
+  position: 'absolute',
+  top: 50,
+  right: 20,
+  backgroundColor: 'rgba(255,255,255,0.15)',
+  borderRadius: 20,
+  padding: 6,
   },
 });
