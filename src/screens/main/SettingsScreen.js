@@ -107,6 +107,16 @@ const SettingsScreen = () => {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Eliminar cuenta',
+      'Esta acción es irreversible. ¿Seguro que deseas eliminar tu cuenta?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: () => { } },
+      ]
+    );
+  };
   const toggle = (value, setter, key) => (
     <Switch
       value={value}
@@ -185,17 +195,6 @@ const SettingsScreen = () => {
         />
       </View>
 
-      <SectionLabel title="APARIENCIA" />
-      <View style={styles.group}>
-        <SettingRow
-          icon="weather-night"
-          iconColor="#818CF8"
-          iconBg="#1A1B2E"
-          label="Modo oscuro"
-          rightElement={toggle(darkMode, setDarkMode, 'darkMode')}
-        />
-      </View>
-
       <SectionLabel title="LEGAL" />
       <View style={styles.group}>
         <SettingRow
@@ -221,6 +220,21 @@ const SettingsScreen = () => {
           label="Cerrar sesión"
           labelStyle={styles.dangerLabel1}
           onPress={handleLogout}
+          rightElement={<View />}
+        />
+      </View>
+
+
+      {/* ── CUENTA PELIGROSA ── */}
+      <SectionLabel title="CUENTA" />
+      <View style={styles.group}>
+        <SettingRow
+          icon="delete-outline"
+          iconColor="#F87171"
+          iconBg="#2A0A0A"
+          label="Eliminar Cuenta"
+          labelStyle={styles.dangerLabel}
+          onPress={handleDeleteAccount}
           rightElement={<View />}
         />
       </View>
