@@ -20,6 +20,9 @@ import EditarTicketScreen from '../screens/main/EditTicketScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditProfileScreen from '../screens/settings/EditProfileScreen';
 import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
+import TermsScreen from '../screens/settings/termsConditions';
+import PrivacyScreen from '../screens/settings/politicasPrivacidad';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -33,22 +36,24 @@ const HIDDEN_ON = new Set([
   'TicketScreen',
   'MensajeScreen',
   'Notifications',
+  'TermsScreen',
+  'PrivacyScreen',
 ]);
 
 // Configuracion de los iconos por ruta
 const TAB_ICONS = {
-  Inicio:   { icon: 'home-outline',        iconFocused: 'home' },
-  Tickets:  { icon: 'ticket-outline',      iconFocused: 'ticket' },
-  Agregar:  { icon: 'add-circle-outline',  iconFocused: 'add-circle' },
-  Mensajes: { icon: 'chatbubble-outline',  iconFocused: 'chatbubble' },
-  Perfil:   { icon: 'person-outline',      iconFocused: 'person' },
+  Inicio: { icon: 'home-outline', iconFocused: 'home' },
+  Tickets: { icon: 'ticket-outline', iconFocused: 'ticket' },
+  Agregar: { icon: 'add-circle-outline', iconFocused: 'add-circle' },
+  Mensajes: { icon: 'chatbubble-outline', iconFocused: 'chatbubble' },
+  Perfil: { icon: 'person-outline', iconFocused: 'person' },
 };
 
 const TAB_BAR_HEIGHT = 70;
 const INDICATOR_SIZE = 48;
-const ACTIVE_COLOR   = '#4F46E5';
+const ACTIVE_COLOR = '#4F46E5';
 const INACTIVE_COLOR = '#6B7280';
-const BG_COLOR       = '#161920';
+const BG_COLOR = '#161920';
 
 
 // Stack de Inicio
@@ -100,6 +105,8 @@ function ProfileStackNavigator() {
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
       <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
       <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
+      <Stack.Screen name="TermsScreen" component={TermsScreen} />
+      <Stack.Screen name="PrivacyScreen" component={PrivacyScreen} />
     </Stack.Navigator>
   );
 }
@@ -149,8 +156,8 @@ function CustomTabBar({ state, descriptors, navigation }) {
       {/* Tabs (Sin nombres, solo íconos) */}
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
-        const isFocused   = state.index === index;
-        const tabData     = TAB_ICONS[route.name];
+        const isFocused = state.index === index;
+        const tabData = TAB_ICONS[route.name];
 
         const onPress = () => {
           const event = navigation.emit({
@@ -198,11 +205,11 @@ export default function MainNavigator() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Inicio"   component={HomeStackNavigator} />
-      <Tab.Screen name="Tickets"  component={MyTicketsStackNavigator} />
-      <Tab.Screen name="Agregar"  component={AgregarStackNavigator} />
+      <Tab.Screen name="Inicio" component={HomeStackNavigator} />
+      <Tab.Screen name="Tickets" component={MyTicketsStackNavigator} />
+      <Tab.Screen name="Agregar" component={AgregarStackNavigator} />
       <Tab.Screen name="Mensajes" component={MessagesStackNavigator} />
-      <Tab.Screen name="Perfil"   component={ProfileStackNavigator} />
+      <Tab.Screen name="Perfil" component={ProfileStackNavigator} />
     </Tab.Navigator>
   );
 }
