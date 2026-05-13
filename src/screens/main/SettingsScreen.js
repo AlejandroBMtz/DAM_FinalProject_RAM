@@ -2,10 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Switch, Platform, StatusBar, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { auth } from '../../services/firebaseConfig';
+import { auth, db } from '../../services/firebaseConfig'; // Asegúrate de exportar 'db' en tu config
 import { signOut } from 'firebase/auth';
-
-
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const SectionLabel = ({ title }) => (
   <Text style={styles.sectionLabel}>{title}</Text>
@@ -23,14 +22,56 @@ const SettingRow = ({ icon, iconColor = '#4F46E5', iconBg = '#1E1B3A', label, on
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
+  const user = auth.currentUser;
 
+  // Estados originales
   const [notifPush, setNotifPush] = useState(true);
   const [notifTickets, setNotifTickets] = useState(true);
   const [notifBadges, setNotifBadges] = useState(true);
   const [notifMessages, setNotifMessages] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
 
-  // Ocultar el TabBar inferior al entrar a esta pantalla
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (user) {
+        try {
+          const userDoc = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(userDoc);
+
+          if (docSnap.exists() && docSnap.data().settings) {
+            const settings = docSnap.data().settings;
+            // Actualizamos los estados con lo que hay en la nube
+            if (settings.notifPush !== undefined) setNotifPush(settings.notifPush);
+            if (settings.notifTickets !== undefined) setNotifTickets(settings.notifTickets);
+            if (settings.notifBadges !== undefined) setNotifBadges(settings.notifBadges);
+            if (settings.notifMessages !== undefined) setNotifMessages(settings.notifMessages);
+            if (settings.darkMode !== undefined) setDarkMode(settings.darkMode);
+          }
+        } catch (error) {
+          console.error("Error al obtener ajustes:", error);
+        }
+      }
+    };
+
+    fetchSettings();
+  }, [user]);
+  // Lógica de guardado en Firebase
+  const handleToggle = async (key, value, setter) => {
+    setter(value); // Cambio visual instantáneo
+    if (user) {
+      try {
+        const userDoc = doc(db, 'users', user.uid);
+        await setDoc(userDoc, {
+          settings: { [key]: value }
+        }, { merge: true });
+      } catch (error) {
+        console.error("Error al guardar:", error);
+        setter(!value); // Revertir si falla
+      }
+    }
+  };
+
+  // Ocultar el TabBar (Tu lógica original)
   useFocusEffect(
     useCallback(() => {
       const parent = navigation.getParent();
@@ -39,7 +80,6 @@ const SettingsScreen = () => {
       }
       return () => {
         if (parent) {
-          // devolvemos el display a 'flex', el CustomTabBar hara el resto
           parent.setOptions({ tabBarStyle: { display: 'flex' } });
         }
       };
@@ -67,21 +107,10 @@ const SettingsScreen = () => {
     );
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Eliminar cuenta',
-      'Esta acción es irreversible. ¿Seguro que deseas eliminar tu cuenta?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => {} },
-      ]
-    );
-  };
-
-  const toggle = (value, setter) => (
+  const toggle = (value, setter, key) => (
     <Switch
       value={value}
-      onValueChange={setter}
+      onValueChange={(val) => handleToggle(key, val, setter)}
       trackColor={{ false: '#2D3243', true: '#4F46E5' }}
       thumbColor="#FFFFFF"
       ios_backgroundColor="#2D3243"
@@ -93,7 +122,6 @@ const SettingsScreen = () => {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
       <StatusBar barStyle="light-content" />
 
-      {/* Back button + title */}
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
         <MaterialCommunityIcons name="chevron-left" size={22} color="#9CA3AF" />
         <Text style={styles.backText}>Regresar</Text>
@@ -101,7 +129,6 @@ const SettingsScreen = () => {
 
       <Text style={styles.screenTitle}>Ajustes</Text>
 
-      {/* ── CUENTA ── */}
       <SectionLabel title="CUENTA" />
       <View style={styles.group}>
         <SettingRow
@@ -123,7 +150,6 @@ const SettingsScreen = () => {
         />
       </View>
 
-      {/* ── NOTIFICACIONES ── */}
       <SectionLabel title="NOTIFICACIONES" />
       <View style={styles.group}>
         <SettingRow
@@ -131,7 +157,7 @@ const SettingsScreen = () => {
           iconColor="#F59E0B"
           iconBg="#2A1F0A"
           label="Notificaciones push"
-          rightElement={toggle(notifPush, setNotifPush)}
+          rightElement={toggle(notifPush, setNotifPush, 'notifPush')}
         />
         <View style={styles.divider} />
         <SettingRow
@@ -139,7 +165,7 @@ const SettingsScreen = () => {
           iconColor="#3B82F6"
           iconBg="#0A1A2A"
           label="Tickets que coinciden"
-          rightElement={toggle(notifTickets, setNotifTickets)}
+          rightElement={toggle(notifTickets, setNotifTickets, 'notifTickets')}
         />
         <View style={styles.divider} />
         <SettingRow
@@ -147,7 +173,7 @@ const SettingsScreen = () => {
           iconColor="#A78BFA"
           iconBg="#1A0A2A"
           label="Nuevas insignias"
-          rightElement={toggle(notifBadges, setNotifBadges)}
+          rightElement={toggle(notifBadges, setNotifBadges, 'notifBadges')}
         />
         <View style={styles.divider} />
         <SettingRow
@@ -155,11 +181,10 @@ const SettingsScreen = () => {
           iconColor="#10B981"
           iconBg="#0A1F15"
           label="Mensajes nuevos"
-          rightElement={toggle(notifMessages, setNotifMessages)}
+          rightElement={toggle(notifMessages, setNotifMessages, 'notifMessages')}
         />
       </View>
 
-      {/* ── APARIENCIA ── */}
       <SectionLabel title="APARIENCIA" />
       <View style={styles.group}>
         <SettingRow
@@ -167,11 +192,10 @@ const SettingsScreen = () => {
           iconColor="#818CF8"
           iconBg="#1A1B2E"
           label="Modo oscuro"
-          rightElement={toggle(darkMode, setDarkMode)}
+          rightElement={toggle(darkMode, setDarkMode, 'darkMode')}
         />
       </View>
 
-      {/* ── LEGAL ── */}
       <SectionLabel title="LEGAL" />
       <View style={styles.group}>
         <SettingRow
@@ -179,7 +203,7 @@ const SettingsScreen = () => {
           iconColor="#9CA3AF"
           iconBg="#1C1F2B"
           label="Términos de Comunidad"
-          onPress={() => alert('Próximamente')}
+          onPress={() => navigation.navigate('TermsScreen')}
         />
         <View style={styles.divider} />
         <SettingRow
@@ -187,7 +211,7 @@ const SettingsScreen = () => {
           iconColor="#9CA3AF"
           iconBg="#1C1F2B"
           label="Políticas de privacidad"
-          onPress={() => alert('Próximamente')}
+          onPress={() => navigation.navigate('PrivacyScreen')}
         />
         <View style={styles.divider} />
         <SettingRow
@@ -197,20 +221,6 @@ const SettingsScreen = () => {
           label="Cerrar sesión"
           labelStyle={styles.dangerLabel1}
           onPress={handleLogout}
-          rightElement={<View />}
-        />
-      </View>
-
-      {/* ── CUENTA PELIGROSA ── */}
-      <SectionLabel title="CUENTA" />
-      <View style={styles.group}>
-        <SettingRow
-          icon="delete-outline"
-          iconColor="#F87171"
-          iconBg="#2A0A0A"
-          label="Eliminar Cuenta"
-          labelStyle={styles.dangerLabel}
-          onPress={handleDeleteAccount}
           rightElement={<View />}
         />
       </View>
