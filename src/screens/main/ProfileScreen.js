@@ -122,29 +122,7 @@ const ProfileScreen = () => {
   }, [previousLevel]);
 
   // Logout
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar sesión',
-      '¿Estás seguro de que deseas salir de tu cuenta?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sí, salir',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await signOut(auth);
-            } catch (error) {
-              console.log('Error al cerrar sesión:', error);
-              Alert.alert('Error', 'No se pudo cerrar la sesión.');
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
+
 
   // Render
   return (
@@ -278,10 +256,6 @@ const ProfileScreen = () => {
       </View>
 
       {/* LOGOUT */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Cerrar sesión</Text>
-      </TouchableOpacity>
-
       <View style={{ height: 30 }} />
     </ScrollView>
   );
@@ -485,20 +459,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
 
-  cardNumber0:{ 
-    fontSize: 24, 
-    fontWeight: '800', 
-    color: '#22C55E' 
+  cardNumber0: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#22C55E'
   },
-  cardNumber1: { 
-    fontSize: 24, 
-    fontWeight: '800', 
-    color: '#F59E0B' 
+  cardNumber1: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#F59E0B'
   },
-  cardNumber2: { 
-    fontSize: 24, 
-    fontWeight: '800', 
-    color: '#3B82F6' 
+  cardNumber2: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#3B82F6'
   },
 
   cardLabel: {
