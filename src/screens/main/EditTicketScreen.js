@@ -1,7 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View,  Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput, Modal, StatusBar } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  Alert, 
+  TextInput, 
+  Modal, 
+  StatusBar 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+
 // --- Importaciones reales de Firebase ---
 import { db } from '../../services/firebaseConfig';
 import { doc, updateDoc } from 'firebase/firestore'; 
@@ -10,7 +20,7 @@ export default function EditTicketScreen({ route, navigation }) {
   // Recibimos los datos del ticket a editar mediante los parámetros de navegación
   const { ticketData } = route.params || {};
 
-  // Inicializamos los estados con la informacion existente
+  // Inicializamos los estados con la información existente
   const [titulo, setTitulo] = useState(ticketData?.titulo || '');
   const [desc, setDesc] = useState(ticketData?.desc || '');
   const [selectedSkills, setSelectedSkills] = useState(ticketData?.etiquetas || []);
@@ -18,11 +28,22 @@ export default function EditTicketScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // Ref para limpiar el timeout de manera segura
+  const timerRef = useRef(null);
+
   const HABILIDADES_INFORMATICA = [
-    'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño', 
-    'JavaScript', 'Algoritmos', 'React Native', 'Node.js', 
-    'UX/UI', 'Figma', 'Recursión', 'Java', 'Express'
+    'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño',
+    'JavaScript', 'Algoritmos', 'React Native', 'Node.js',
+    'UX/UI', 'Figma', 'Recursión', 'Java', 'Express',
+    'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave'
   ];
+
+  // Limpieza del temporizador si el usuario sale antes de que termine el Modal
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const toggleSkill = (skill) => {
     if (selectedSkills.includes(skill)) {
@@ -38,7 +59,7 @@ export default function EditTicketScreen({ route, navigation }) {
     } else {
       setPrioridad(prio);
     }
-  }
+  };
 
   const guardarCambios = async () => {
     if (selectedSkills.length === 0) {
@@ -56,6 +77,11 @@ export default function EditTicketScreen({ route, navigation }) {
       return;
     }
 
+    if (!ticketData?.id) {
+      Alert.alert("Error", "No se encontró el ID del ticket para actualizar.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -70,11 +96,11 @@ export default function EditTicketScreen({ route, navigation }) {
         fechaActualizacion: new Date().toISOString()
       });
 
-      // Mostramos el modal de exito
+      // Mostramos el modal de éxito
       setShowSuccessModal(true);
 
-      // Esperamos 2 segundos y luego navegamos de regreso
-      setTimeout(() => {
+      // Guardamos la referencia del timeout de forma segura
+      timerRef.current = setTimeout(() => {
         setShowSuccessModal(false);
         navigation.goBack();
       }, 2000);
@@ -107,7 +133,7 @@ export default function EditTicketScreen({ route, navigation }) {
       >
         <View style={styles.titleContainer}>
           <Text style={styles.creaTicket}>Edita tu ticket</Text>
-          <Text style={styles.creaSub}>Alguien de la facultad puede ayudarte</Text>
+          <Text style={styles.creaSub}>Modifica los detalles de tu solicitud de ayuda</Text>
         </View>
 
         <Text style={styles.sectionLabel}>TÍTULO DEL PROBLEMA</Text>
@@ -122,7 +148,7 @@ export default function EditTicketScreen({ route, navigation }) {
         <Text style={styles.sectionLabel}>DESCRIPCIÓN DETALLADA</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Explica tu duda con más detalle.&#10;Entre más info, más fácil es ayudarte..."
+          placeholder="Explica tu duda con más detalle..."
           placeholderTextColor="#5E6376"
           multiline={true}
           numberOfLines={4}
@@ -195,12 +221,16 @@ export default function EditTicketScreen({ route, navigation }) {
           })}
         </View>
 
-        <TouchableOpacity style={styles.submit} onPress={guardarCambios} disabled={loading}>
-          <Text style={styles.submitText}>Guardar Cambios</Text>
+        <TouchableOpacity 
+          style={[styles.submit, loading && { opacity: 0.6 }]} 
+          onPress={guardarCambios} 
+          disabled={loading}
+        >
+          <Text style={styles.submitText}>{loading ? "Guardando..." : "Guardar Cambios"}</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal de exito automatico */}
+      {/* Modal de éxito automático */}
       <Modal visible={showSuccessModal} transparent animationType="fade">
         <View style={styles.modalOverlayCenter}>
           <View style={styles.modalContentCenter}>
@@ -216,6 +246,7 @@ export default function EditTicketScreen({ route, navigation }) {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
