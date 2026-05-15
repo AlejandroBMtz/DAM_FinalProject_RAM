@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
-import { collection, query, where, orderBy, or, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, or, and, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,7 +40,7 @@ export default function MensajesScreen() {
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const data = userSnap.data();
-        // El campo correcto en Firestore es fotoPerfil, no fotoUrl
+        // El campo correcto en Firestore es fotoPerfil
         return { nombre: data.nombre || '', fotoPerfil: data.fotoPerfil || null };
       }
     } catch (error) {
@@ -57,9 +57,12 @@ export default function MensajesScreen() {
       const convRef = collection(db, 'conversaciones');
       const q = query(
         convRef,
-        or(
-          where('solicitante', '==', userUid),
-          where('ayudante', '==', userUid)
+        and(
+          or(
+            where('solicitante', '==', userUid),
+            where('ayudante', '==', userUid)
+          ),
+          where('estado', '==', 'activa')
         ),
         orderBy('ultimaActividad', 'desc')
       );
