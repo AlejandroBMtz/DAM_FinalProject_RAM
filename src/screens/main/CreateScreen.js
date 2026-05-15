@@ -139,7 +139,7 @@ export default function Crear({ route, navigation }) {
         console.log(`Notificaciones enviadas a ${tokensToNotify.length} usuarios.`);
       }
 
-      navigation.navigate('Inicio', { screen: 'myTicket' });
+      navigation.navigate('Tickets', { screen: 'MyTicketsMain' });
     } catch (error) {
       console.log("Error en Firebase:", error);
       Alert.alert("Error de Registro", error.message || String(error));
