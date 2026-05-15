@@ -64,7 +64,7 @@ export default function TicketScreen({ route }) {
       Alert.alert("Atención", "Por favor selecciona un motivo de reporte.");
       return;
     }
-    // Aquí puedes agregar la lógica para guardar el reporte en Firebase
+    // Aqui puedes agregar la lógica para guardar el reporte en Firebase
     console.log("Reportando:", selectedReason, reportDetails);
     Alert.alert("Reporte enviado", "Hemos recibido tu reporte y lo revisaremos pronto.");
     setModalVisible(false);
@@ -77,16 +77,17 @@ export default function TicketScreen({ route }) {
       // conversacion 
       const convoRef = await addDoc(collection(db, "conversaciones"), {
         solicitudId: ticketData.id,        // <-- Vinculado al problema
-        tituloProblema: ticketData.titulo, // <-- Guardamos el título para mostrarlo
+        tituloProblema: ticketData.titulo, // <-- Guardamos el titulo para mostrarlo
         solicitante: ticketData.usuario,
         ayudante: auth.currentUser.uid,
         ultimoMensaje: "¡Hola, yo te apoyo!",
-        ultimaActividad: new Date().toISOString()
+        ultimaActividad: new Date().toISOString(),
+        estado: 'activa' // <-- este es el nuevo campo para controlar el estado de la conversacion
       });
 
       // estado del ticket
       const ticketRef = doc(db, 'solicitudes', ticketData.id);
-      await updateDoc(ticketRef, { estado: 'en proceso' });
+      await updateDoc(ticketRef, { estado: 'en proceso', ayudante: auth.currentUser.uid });
 
       await addDoc(collection(db, "mensajes"), {
         idConversacion: convoRef.id,
@@ -133,6 +134,7 @@ export default function TicketScreen({ route }) {
         solicitudId: ticketData.id,
         tituloProblema: ticketData.titulo,
         nombre: creator?.nombre || 'Usuario', // Nombre de quien recibe la ayuda
+        estado: 'activa',
       };
 
       await evaluateBadges(); // ← evalúa fast_reply u otras al aceptar un ticket

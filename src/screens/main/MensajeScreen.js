@@ -13,7 +13,7 @@ const FEEDBACK = [
   "Paciente", "Claro", "Rápido", "Conoce el tema", "Amable"
 ];
 
-// Hook: mide la altura real del teclado en el dispositivo actual
+// Hook: mide la altura real del teclado
 function useKeyboardHeight() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
@@ -36,7 +36,6 @@ function useKeyboardHeight() {
   return keyboardHeight;
 }
 
-// Componente principal
 export default function MensajeScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -45,21 +44,21 @@ export default function MensajeScreen() {
   const [message, setMessage] = useState('');
   const [mensajes, setMensajes] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const keyboardHeight = useKeyboardHeight();
 
-  const [modalVisible, setModalVisible] = useState(false);
+  // Estados de Modales
+  const [modalVisible, setModalVisible] = useState(false); // Modal de Calificación
+  const [cancelModalVisible, setCancelModalVisible] = useState(false); // Modal Cancelar/Abandonar
+  const [terminarModalVisible, setTerminarModalVisible] = useState(false); // Modal Terminar
+  const [imagenVisor, setImagenVisor] = useState(null);
+
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
+  const [selectedTags, setSelectedTags] = useState([]);
 
   const conversacionData = route.params?.conversacionData;
   const title = route.params?.nombre || conversacionData?.nombre || 'Usuario';
   const fotoUrl = conversacionData?.fotoPerfil || conversacionData?.fotoUrl;
-
-  const [selectedTags, setSelectedTags] = useState([]);
- 
-  const [imagenVisor, setImagenVisor] = useState(null); // Para mostrar la imagen en grande al tocarla
-
   const esAyudante = conversacionData?.ayudante === auth.currentUser?.uid;
 
   const toggleTag = (tag) => {
@@ -70,92 +69,72 @@ export default function MensajeScreen() {
     }
   };
 
-  // ─── Marcar como leído al entrar al chat ───────────────────────────────────
-  // Resetea el contador de no leídos del usuario actual en esta conversación
   const marcarComoLeido = useCallback(async () => {
     const convoUid = conversacionData?.id;
     const currentUid = auth.currentUser?.uid;
     if (!convoUid || !currentUid) return;
-
     try {
       const noLeidosKey = `noLeidos_${currentUid}`;
-      await updateDoc(doc(db, 'conversaciones', convoUid), {
-        [noLeidosKey]: 0,
-      });
+      await updateDoc(doc(db, 'conversaciones', convoUid), { [noLeidosKey]: 0 });
     } catch (error) {
       console.log('Error al marcar como leído:', error);
     }
   }, [conversacionData?.id]);
 
-  // Se ejecuta cada vez que la pantalla gana foco
   useFocusEffect(
     useCallback(() => {
       marcarComoLeido();
     }, [marcarComoLeido])
   );
-  
+
   const performTermination = async () => {
     const convoUid = conversacionData?.id;
-    if (!convoUid) return;
+    const solicitudId = conversacionData?.solicitudId;
+    if (!convoUid || !solicitudId) return;
 
     try {
       const ayudante = conversacionData?.ayudante;
-      const userSnap = await getDoc(doc(db, 'users', ayudante));
-
-      const oldRating = userSnap.data().rated || 0;
-      const oldHelpGiven = userSnap.data().helpGiven || 0;
-      const newRating = ((oldRating * oldHelpGiven) + rating) / (oldHelpGiven + 1);
-      const newHelpGiven = oldHelpGiven + 1;
-
-      await setDoc(doc(db, 'users', ayudante), {
-        rated: newRating,
-        helpGiven: newHelpGiven,
-      }, { merge: true });
-
-      await evaluateBadges();
-
-      const solicitanteSnap = await getDoc(doc(db, 'users', auth.currentUser.uid));
-      const oldHelpAsked = solicitanteSnap.data().helpAsked || 0;
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        helpAsked: oldHelpAsked + 1,
-      }, { merge: true });
-
-      await evaluateBadges();
-
-      const soliNombre = solicitanteSnap.data().nombre;
-      await addDoc(collection(db, 'notificaciones'), {
-        tipo: 'feedback',
-        titulo: `${soliNombre} te dejó una reseña`,
-        desc: feedback,
-        usuario: ayudante,
-        tags: selectedTags,
+      const currentUid = auth.currentUser.uid;
+      
+      await addDoc(collection(db, 'valoraciones'), {
+        solicitudId,
+        de: currentUid,
+        para: ayudante,
+        estrellas: rating,
+        comentario: feedback,
+        etiquetas: selectedTags,
+        fecha: new Date().toISOString()
       });
 
-      // Eliminar mensajes
-      const msgRef = collection(db, 'mensajes');
-      const q = query(msgRef, where('idConversacion', '==', convoUid));
-      const querySnapshot = await getDocs(q);
-      await Promise.all(querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref)));
+      const userSnap = await getDoc(doc(db, 'users', ayudante));
+      const userData = userSnap.data();
+      const oldRating = userData.rated || 0;
+      const oldHelpGiven = userData.helpGiven || 0;
+      const newRating = ((oldRating * oldHelpGiven) + rating) / (oldHelpGiven + 1);
+      
+      await updateDoc(doc(db, 'users', ayudante), {
+        rated: newRating,
+        helpGiven: oldHelpGiven + 1
+      });
+      await updateDoc(doc(db, 'conversaciones', convoUid), {
+        estado: 'completada',
+        fechaActualizacion: new Date().toISOString()
+      });
+      await updateDoc(doc(db, 'solicitudes', solicitudId), {
+        estado: 'resuelto',
+        fechaActualizacion: new Date().toISOString()
+      });
 
-      // Eliminar conversación y ticket
-      await deleteDoc(doc(db, 'conversaciones', convoUid));
-      await deleteDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
-
-      console.log('Terminación exitosa');
-      navigation.goBack();
+      navigation.navigate('Tickets');
     } catch (error) {
-      console.log('Error al terminar:', error);
-      Alert.alert('Error', 'No se pudo terminar la conversación.');
+      Alert.alert('Error', 'No se pudo finalizar correctamente.');
     }
   };
 
-  // Enviar mensaje
   const handleSend = async () => {
     const convoUid = conversacionData?.id;
     if (message.trim() === '') return;
-
     setLoading(true);
-
     try {
       await addDoc(collection(db, 'mensajes'), {
         idConversacion: convoUid,
@@ -163,56 +142,14 @@ export default function MensajeScreen() {
         texto: message,
         tiempoEnviado: new Date().toISOString(),
       });
-
-      // Determinar quién es el destinatario
       const currentUid = auth.currentUser.uid;
-      const otherUid = conversacionData.solicitante === currentUid
-        ? conversacionData.ayudante
-        : conversacionData.solicitante;
-
-      // Incrementar contador de no leídos del destinatario
+      const otherUid = conversacionData.solicitante === currentUid ? conversacionData.ayudante : conversacionData.solicitante;
       const noLeidosKey = `noLeidos_${otherUid}`;
       await updateDoc(doc(db, 'conversaciones', convoUid), {
         ultimoMensaje: message,
         ultimaActividad: new Date().toISOString(),
         [noLeidosKey]: increment(1),
       });
-
-      // Notificación in-app
-      if (otherUid) {
-        await addDoc(collection(db, 'notificaciones'), {
-          usuarioId: otherUid,
-          tipo: 'mensaje',
-          titulo: 'Nuevo mensaje',
-          descripcion: message.length > 30 ? message.substring(0, 30) + '...' : message,
-          leida: false,
-          fecha: new Date().toISOString(),
-        });
-
-        // Push notification
-        const otherUserSnap = await getDoc(doc(db, 'users', otherUid));
-        if (otherUserSnap.exists()) {
-          const otherUserData = otherUserSnap.data();
-          if (otherUserData.pushToken) {
-            const pushMessage = {
-              to: otherUserData.pushToken,
-              sound: 'default',
-              title: `Nuevo mensaje de ${auth.currentUser.displayName || 'un compañero'}`,
-              body: message,
-              data: { conversacionId: convoUid },
-            };
-            await fetch('https://exp.host/--/api/v2/push/send', {
-              method: 'POST',
-              headers: {
-                Accept: 'application/json',
-                'Accept-encoding': 'gzip, deflate',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(pushMessage),
-            });
-          }
-        }
-      }
     } catch (error) {
       console.log('Error en Firebase:', error);
     } finally {
@@ -224,170 +161,80 @@ export default function MensajeScreen() {
   const handlePickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: false,
-        quality: 0.7,
-      });
-
+      if (status !== 'granted') return Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.');
+      
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
       if (result.canceled) return;
-
+      
       setLoading(true);
-      const uri = result.assets[0].uri;
-
-      const imageUrl = await uploadImageToCloudinary(uri);
-
+      const imageUrl = await uploadImageToCloudinary(result.assets[0].uri);
       const convoUid = conversacionData?.id;
       const currentUid = auth.currentUser.uid;
-      const otherUid = conversacionData.solicitante === currentUid
-        ? conversacionData.ayudante
-        : conversacionData.solicitante;
-
+      const otherUid = conversacionData.solicitante === currentUid ? conversacionData.ayudante : conversacionData.solicitante;
+      
       await addDoc(collection(db, 'mensajes'), {
         idConversacion: convoUid,
         idUsuario: currentUid,
         tipo: 'imagen',
         imageUrl,
-        tiempoEnviado: new Date().toISOString(),
+        tiempoEnviado: new Date().toISOString()
       });
-
       await updateDoc(doc(db, 'conversaciones', convoUid), {
         ultimoMensaje: '📷 Foto',
         ultimaActividad: new Date().toISOString(),
-        [`noLeidos_${otherUid}`]: increment(1),
+        [`noLeidos_${otherUid}`]: increment(1)
       });
-
     } catch (error) {
-      console.log('ERROR:', error);
       Alert.alert('Error', 'No se pudo enviar la imagen.');
     } finally {
       setLoading(false);
     }
   };
 
-  const cancelar = async () => {
-    const convoUid = conversacionData?.id;
-    if (!convoUid) return;
-
-    Alert.alert(
-      'Confirmar Cancelación',
-      '¿Estás seguro de que quieres cancelar esta conversación? Se eliminarán los mensajes y la conversación, pero el ticket permanecerá disponible.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const msgRef = collection(db, 'mensajes');
-              const q = query(msgRef, where('idConversacion', '==', convoUid));
-              const querySnapshot = await getDocs(q);
-              await Promise.all(querySnapshot.docs.map(docSnap => deleteDoc(docSnap.ref)));
-
-              await deleteDoc(doc(db, 'conversaciones', convoUid));
-
-              const solRef = doc(db, 'solicitudes', conversacionData.solicitudId);
-              await setDoc(solRef, { estado: 'disponible' }, { merge: true });
-
-              console.log('Cancelación exitosa');
-              navigation.goBack();
-            } catch (error) {
-              console.log('Error al cancelar:', error);
-              Alert.alert('Error', 'No se pudo cancelar la conversación.');
-            }
-          },
-        },
-      ]
-    );
+  // Funciones de Cancelación (Ayudante)
+  const abrirModalCancelar = () => setCancelModalVisible(true);
+  
+  const abandonarAyuda = async () => {
+    await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
+    await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), { estado: 'disponible', ayudante: null });
+    setCancelModalVisible(false);
+    navigation.goBack();
+  };
+  
+  const finalizarComoCancelado = async () => {
+    await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
+    await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), { estado: 'cancelado' });
+    setCancelModalVisible(false);
+    navigation.goBack();
   };
 
-  const terminar = async () => {
-    const convoUid = conversacionData?.id;
-    if (!convoUid) return;
-
-    Alert.alert(
-      'Confirmar Terminación',
-      '¿Estás seguro de que quieres terminar esta conversación? Se eliminarán los mensajes, la conversación y el ticket.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          style: 'destructive',
-          onPress: () => {
-            setRating(0);
-            setFeedback('');
-            setModalVisible(true);
-          },
-        },
-      ]
-    );
+  // Funciones de Terminación (Solicitante)
+  const abrirModalTerminar = () => setTerminarModalVisible(true);
+  
+  const confirmarTerminacion = () => {
+    setTerminarModalVisible(false);
+    setRating(0);
+    setFeedback('');
+    setSelectedTags([]);
+    setModalVisible(true);
   };
 
-  // Escuchar mensajes en tiempo real
-  const obtenerMensajes = () => {
-    const convoUid = conversacionData?.id;
-    if (!convoUid) {
-      setMensajes([]);
-      setLoading(false);
-      return;
-    }
-
-    const msgRef = collection(db, 'mensajes');
-    const q = query(
-      msgRef,
-      where('idConversacion', '==', convoUid),
-      orderBy('tiempoEnviado')
-    );
-
-    const unsub = onSnapshot(
-      q,
-      (snapshot) => {
-        const results = snapshot.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...docSnap.data(),
-        }));
-        setMensajes(results);
-        setLoading(false);
-      },
-      (error) => {
-        console.log('Error al obtener mensajes:', error);
-        setLoading(false);
-      }
-    );
-
-    return unsub;
-  };
-
-  // Montar listener de mensajes
   useEffect(() => {
-    const unsub = obtenerMensajes();
-    return () => {
-      if (typeof unsub === 'function') unsub();
-    };
+    const convoUid = conversacionData?.id;
+    if (!convoUid) return;
+    const q = query(collection(db, 'mensajes'), where('idConversacion', '==', convoUid), orderBy('tiempoEnviado'));
+    const unsub = onSnapshot(q, (snapshot) => {
+      setMensajes(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    });
+    return () => unsub();
   }, []);
 
-  // Scroll al último mensaje
   useEffect(() => {
     if (mensajes.length > 0) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, [mensajes]);
-
-  // Scroll al abrir teclado
-  useEffect(() => {
-    if (keyboardHeight > 0) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
-  }, [keyboardHeight]);
+  }, [mensajes, keyboardHeight]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -398,187 +245,183 @@ export default function MensajeScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
-
-        <Image
-          source={fotoUrl ? { uri: fotoUrl } : require('../../../assets/images/Logo.png')}
-          style={styles.avatar}
+        <Image 
+          source={fotoUrl ? { uri: fotoUrl } : require('../../../assets/images/Logo.png')} 
+          style={styles.avatar} 
         />
-
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {title}
-          </Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
         </View>
-
-        {esAyudante ? (
-          <TouchableOpacity style={styles.terminarBtn} onPress={cancelar}>
-            <Text style={styles.terminarText}>Cancelar</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.terminarBtn} onPress={terminar}>
-            <Text style={styles.terminarText}>Terminar</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          style={styles.terminarBtn} 
+          onPress={esAyudante ? abrirModalCancelar : abrirModalTerminar}
+        >
+          <Text style={styles.terminarText}>{esAyudante ? 'Cancelar' : 'Terminar'}</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Área de mensajes */}
-      <ImageBackground
-        source={require('../../../assets/images/FondoChat.png')}
-        style={styles.background}
+      <ImageBackground 
+        source={require('../../../assets/images/FondoChat.png')} 
+        style={styles.background} 
         resizeMode="cover"
       >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
+        <ScrollView 
+          ref={scrollViewRef} 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.listContainer} 
+          showsVerticalScrollIndicator={false} 
           keyboardShouldPersistTaps="handled"
         >
-          {loading && mensajes.length === 0 ? (
-            <Text style={styles.infoText}>Cargando...</Text>
-          ) : mensajes.length === 0 ? (
-            <Text style={styles.infoText}>Inicia la conversación.</Text>
-          ) : (
-            mensajes.map((msg) => {
-              const esMio = msg.idUsuario === auth.currentUser.uid;
-              return (
-                <View
-                  key={msg.id}
-                  style={[
-                    styles.cuerpoMensaje,
-                    esMio ? styles.cuerpoEnviado : styles.cuerpoRecibido,
-                  ]}
-                >
-                  {msg.tipo === 'imagen' ? (
-                    <TouchableOpacity onPress={() => setImagenVisor(msg.imageUrl)} activeOpacity={0.9}>
-                      <Image
-                        source={{ uri: msg.imageUrl }}
-                        style={styles.imagenMensaje}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={styles.textoMensaje}>{msg.texto}</Text>
-                  )}
-                </View>
-              );
-            })
-          )}
+          {mensajes.map((msg) => (
+            <View 
+              key={msg.id} 
+              style={[
+                styles.cuerpoMensaje, 
+                msg.idUsuario === auth.currentUser.uid ? styles.cuerpoEnviado : styles.cuerpoRecibido
+              ]}
+            >
+              {msg.tipo === 'imagen' ? (
+                <TouchableOpacity onPress={() => setImagenVisor(msg.imageUrl)} activeOpacity={0.9}>
+                  <Image source={{ uri: msg.imageUrl }} style={styles.imagenMensaje} resizeMode="cover" />
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.textoMensaje}>{msg.texto}</Text>
+              )}
+            </View>
+          ))}
         </ScrollView>
       </ImageBackground>
 
-      {/* Barra de input */}
+      {/* INPUT BAR */}
       <View style={[styles.inputRow, { marginBottom: keyboardHeight }]}>
         <View style={styles.inputLeftIcons}>
           <Ionicons name="mail-outline" size={22} color="#8A8F9E" />
           <View style={styles.verticalDivider} />
         </View>
-
-        <TextInput
-          style={styles.textInput}
-          value={message}
-          onChangeText={setMessage}
-          placeholder="Escribe un mensaje..."
-          placeholderTextColor="#8A8F9E"
-          multiline={true}
+        <TextInput 
+          style={styles.textInput} 
+          value={message} 
+          onChangeText={setMessage} 
+          placeholder="Escribe un mensaje..." 
+          placeholderTextColor="#8A8F9E" 
+          multiline 
         />
-
         <TouchableOpacity style={styles.attachButton} onPress={handlePickImage}>
           <Ionicons name="attach-outline" size={26} color="#8A8F9E" />
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.sendButton}
-          onPress={handleSend}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="send" size={18} color="#FFF" style={{ marginLeft: 2 }} />
+        <TouchableOpacity style={styles.sendButton} onPress={handleSend} activeOpacity={0.8}>
+          <Ionicons name="send" size={18} color="#FFF" />
         </TouchableOpacity>
       </View>
 
-      {/* Modal de calificación */}
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>¡Califica el apoyo!</Text>
-            <Text style={styles.modalSubtitle}>¿Cómo fue tu experiencia?</Text>
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                  <Ionicons
-                    name={rating >= star ? 'star' : 'star-outline'}
-                    size={40}
-                    color="#FFD700"
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.modalFeedback}>¿Qué destacas?</Text>
-            <View style={styles.tagsContainer}>
-              {FEEDBACK.map((tag, index) => {
-                const isSelected = selectedTags.includes(tag);
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.tag, isSelected ? styles.tagSelected : styles.tagUnselected]}
-                    onPress={() => toggleTag(tag)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.tagText, isSelected ? styles.tagTextSelected : styles.tagTextUnselected]}>
-                      {tag}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <TextInput
-              style={styles.feedbackInput}
-              placeholder="Deja tu feedback..."
-              placeholderTextColor="#8A8F9E"
-              value={feedback}
-              onChangeText={setFeedback}
-              multiline
+      {/* MODAL: CANCELAR (Ayudante) */}
+      <Modal visible={cancelModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlayCenter}>
+          <View style={styles.modalContentCenter}>
+            <Ionicons 
+              name="warning" 
+              size={40} 
+              color="#FFD166" 
+              style={{ alignSelf: 'center', marginBottom: 15 }} 
             />
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={() => {
-                performTermination();
-                setModalVisible(false);
-              }}
-            >
-              <Text style={styles.submitText}>Enviar</Text>
+            <Text style={styles.modalTitleCenter}>¿Cómo deseas proceder?</Text>
+            <Text style={styles.modalSubtitleCenter}>Elige qué pasará con este ticket de ayuda.</Text>
+            
+            <TouchableOpacity style={styles.btnActionSecondary} onPress={abandonarAyuda}>
+              <Text style={styles.btnActionSecondaryText}>Abandonar ayuda</Text>
+              <Text style={styles.btnActionSubText}>Libera el ticket para alguien más</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.btnActionDestructive} onPress={finalizarComoCancelado}>
+              <Text style={styles.btnActionDestructiveText}>Finalizar como cancelado</Text>
+              <Text style={styles.btnActionSubTextDestructive}>Cierra el ticket permanentemente</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.btnActionCancel} onPress={() => setCancelModalVisible(false)}>
+              <Text style={styles.btnActionCancelText}>Volver al chat</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Visor de imagen en pantalla completa */}
-      <Modal
-        visible={!!imagenVisor}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setImagenVisor(null)}
-      >
-        <TouchableOpacity
-          style={styles.visorOverlay}
-          activeOpacity={1}
-          onPress={() => setImagenVisor(null)}
-        >
-          <Image
-            source={{ uri: imagenVisor }}
-            style={styles.visorImagen}
-            resizeMode="contain"
-          />
+      {/* MODAL: TERMINAR (Solicitante) */}
+      <Modal visible={terminarModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlayCenter}>
+          <View style={styles.modalContentCenter}>
+            <Ionicons 
+              name="checkmark-circle" 
+              size={48} 
+              color="#4ADE80" 
+              style={{ alignSelf: 'center', marginBottom: 15 }} 
+            />
+            <Text style={styles.modalTitleCenter}>¿Problema resuelto?</Text>
+            <Text style={styles.modalSubtitleCenter}>Se cerrará el chat y podrás calificar la atención.</Text>
+            
+            <TouchableOpacity style={styles.btnActionPrimary} onPress={confirmarTerminacion}>
+              <Text style={styles.btnActionPrimaryText}>Sí, terminar y calificar</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.btnActionCancel} onPress={() => setTerminarModalVisible(false)}>
+              <Text style={styles.btnActionCancelText}>Seguir en el chat</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL: CALIFICACIÓN */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>¡Califica el apoyo!</Text>
+            
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <TouchableOpacity key={s} onPress={() => setRating(s)}>
+                  <Ionicons name={rating >= s ? 'star' : 'star-outline'} size={40} color="#FFD700" />
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <View style={styles.tagsContainer}>
+              {FEEDBACK.map((t, i) => (
+                <TouchableOpacity 
+                  key={i} 
+                  style={[styles.tag, selectedTags.includes(t) ? styles.tagSelected : styles.tagUnselected]} 
+                  onPress={() => toggleTag(t)}
+                >
+                  <Text style={[styles.tagText, selectedTags.includes(t) ? styles.tagTextSelected : styles.tagTextUnselected]}>
+                    {t}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <TextInput 
+              style={styles.feedbackInput} 
+              placeholder="Feedback..." 
+              placeholderTextColor="#8A8F9E" 
+              value={feedback} 
+              onChangeText={setFeedback} 
+              multiline 
+            />
+            
+            <TouchableOpacity style={styles.submitButton} onPress={performTermination}>
+              <Text style={styles.submitText}>Enviar y finalizar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* VISOR IMAGEN */}
+      <Modal visible={!!imagenVisor} transparent animationType="fade">
+        <TouchableOpacity style={styles.visorOverlay} activeOpacity={1} onPress={() => setImagenVisor(null)}>
+          <Image source={{ uri: imagenVisor }} style={styles.visorImagen} resizeMode="contain" />
           <TouchableOpacity style={styles.visorCerrar} onPress={() => setImagenVisor(null)}>
             <Ionicons name="close" size={28} color="#FFF" />
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
     </SafeAreaView>
   );
 }
@@ -592,7 +435,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 10 : 45,
+    paddingTop: Platform.OS === 'ios' ? 10 : 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#161920',
@@ -632,12 +475,6 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
     width: '100%',
-  },
-  infoText: {
-    color: '#8A8F9E',
-    textAlign: 'center',
-    marginTop: 40,
-    fontSize: 14,
   },
   scrollView: {
     flex: 1,
@@ -700,11 +537,6 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     color: '#FFF',
     fontSize: 15,
-    paddingTop: Platform.OS === 'ios' ? 10 : 8,
-    paddingBottom: Platform.OS === 'ios' ? 10 : 8,
-  },
-  attachButton: {
-    paddingHorizontal: 10,
   },
   sendButton: {
     width: 40,
@@ -715,30 +547,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 5,
   },
+  imagenMensaje: {
+    width: 220,
+    height: 180,
+    borderRadius: 12,
+  },
+
+  // Modales
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
   modalContent: {
     backgroundColor: '#161920',
     padding: 20,
-    paddingTop: 30,
-    paddingBottom: 30,
-    borderRadius: 10,
+    borderRadius: 12,
     width: '90%',
   },
   modalTitle: {
     color: '#FFF',
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  modalSubtitle: {
-    color: '#999999',
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
@@ -748,23 +578,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
   },
-  modalFeedback: {
-    color: '#999',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'left',
-    marginBottom: 20,
-  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
+    gap: 10,
     justifyContent: 'center',
+    marginBottom: 20,
   },
   tag: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
   },
@@ -773,15 +596,14 @@ const styles = StyleSheet.create({
     borderColor: '#2D3243',
   },
   tagSelected: {
-    backgroundColor: 'rgba(67, 56, 202, 0.15)',
+    backgroundColor: 'rgba(108, 99, 255, 0.15)',
     borderColor: '#6C63FF',
   },
   tagText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
   },
   tagTextUnselected: {
-    color: '#7E8494',
+    color: '#8A8F9E',
   },
   tagTextSelected: {
     color: '#8B85FF',
@@ -789,43 +611,124 @@ const styles = StyleSheet.create({
   feedbackInput: {
     borderWidth: 1,
     borderColor: '#2D3243',
-    borderRadius: 5,
-    padding: 10,
+    borderRadius: 8,
+    padding: 12,
     color: '#FFF',
-    minHeight: 60,
+    minHeight: 80,
     marginBottom: 20,
   },
   submitButton: {
     backgroundColor: '#2563EB',
-    padding: 10,
-    borderRadius: 5,
+    padding: 14,
+    borderRadius: 8,
     alignItems: 'center',
   },
   submitText: {
     color: '#FFF',
-    fontSize: 16,
+    fontWeight: 'bold',
   },
-  imagenMensaje: {
-  width: 220,
-  height: 180,
-  borderRadius: 12,
+
+  // Modales centrados (Terminar/Cancelar)
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    padding: 24,
   },
+  modalContentCenter: {
+    backgroundColor: '#161920',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#2D3243',
+  },
+  modalTitleCenter: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitleCenter: {
+    color: '#8A8F9E',
+    textAlign: 'center',
+    fontSize: 14,
+    marginBottom: 24,
+  },
+  btnActionPrimary: {
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  btnActionPrimaryText: {
+    color: '#60A5FA',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  btnActionSecondary: {
+    backgroundColor: '#1C1F2B',
+    borderWidth: 1,
+    borderColor: '#2D3243',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  btnActionSecondaryText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  btnActionSubText: {
+    color: '#8A8F9E',
+    fontSize: 11,
+  },
+  btnActionDestructive: {
+    backgroundColor: 'rgba(255, 77, 77, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 77, 77, 0.3)',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  btnActionDestructiveText: {
+    color: '#FF4D4D',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  btnActionSubTextDestructive: {
+    color: 'rgba(255, 77, 77, 0.7)',
+    fontSize: 11,
+  },
+  btnActionCancel: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  btnActionCancelText: {
+    color: '#8A8F9E',
+    fontWeight: '600',
+  },
+
   visorOverlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0,0,0,0.95)',
-  justifyContent: 'center',
-  alignItems: 'center',
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
   },
-visorImagen: {
-  width: '100%',
-  height: '85%',
+  visorImagen: {
+    width: '100%',
+    height: '80%',
   },
-visorCerrar: {
-  position: 'absolute',
-  top: 50,
-  right: 20,
-  backgroundColor: 'rgba(255,255,255,0.15)',
-  borderRadius: 20,
-  padding: 6,
+  visorCerrar: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    padding: 8,
   },
 });
