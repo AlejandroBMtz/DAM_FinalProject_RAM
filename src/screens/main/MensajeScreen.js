@@ -8,6 +8,7 @@ import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
+import i18next from '../../services/staticTL';
 
 const FEEDBACK = [
   "Paciente", "Claro", "Rápido", "Conoce el tema", "Amable"
@@ -242,7 +243,7 @@ export default function MensajeScreen() {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.navigate('MensajesMain')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Image 
@@ -256,7 +257,7 @@ export default function MensajeScreen() {
           style={styles.terminarBtn} 
           onPress={esAyudante ? abrirModalCancelar : abrirModalTerminar}
         >
-          <Text style={styles.terminarText}>{esAyudante ? 'Cancelar' : 'Terminar'}</Text>
+          <Text style={styles.terminarText}>{esAyudante ? i18next.t("cancelar") : i18next.t("terminar")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -302,7 +303,7 @@ export default function MensajeScreen() {
           style={styles.textInput} 
           value={message} 
           onChangeText={setMessage} 
-          placeholder="Escribe un mensaje..." 
+          placeholder={i18next.t("mensajes.place")}
           placeholderTextColor="#8A8F9E" 
           multiline 
         />
@@ -324,21 +325,21 @@ export default function MensajeScreen() {
               color="#FFD166" 
               style={{ alignSelf: 'center', marginBottom: 15 }} 
             />
-            <Text style={styles.modalTitleCenter}>¿Cómo deseas proceder?</Text>
-            <Text style={styles.modalSubtitleCenter}>Elige qué pasará con este ticket de ayuda.</Text>
+            <Text style={styles.modalTitleCenter}>{i18next.t("mensajes.proceder")}</Text>
+            <Text style={styles.modalSubtitleCenter}>{i18next.t("mensajes.elegir")}</Text>
             
             <TouchableOpacity style={styles.btnActionSecondary} onPress={abandonarAyuda}>
-              <Text style={styles.btnActionSecondaryText}>Abandonar ayuda</Text>
-              <Text style={styles.btnActionSubText}>Libera el ticket para alguien más</Text>
+              <Text style={styles.btnActionSecondaryText}>{i18next.t("mensajes.abandonar")}</Text>
+              <Text style={styles.btnActionSubText}>{i18next.t("mensajes.libera")}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.btnActionDestructive} onPress={finalizarComoCancelado}>
-              <Text style={styles.btnActionDestructiveText}>Finalizar como cancelado</Text>
-              <Text style={styles.btnActionSubTextDestructive}>Cierra el ticket permanentemente</Text>
+              <Text style={styles.btnActionDestructiveText}>{i18next.t("mensajes.finalizar")}</Text>
+              <Text style={styles.btnActionSubTextDestructive}>{i18next.t("mensajes.cierra")}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.btnActionCancel} onPress={() => setCancelModalVisible(false)}>
-              <Text style={styles.btnActionCancelText}>Volver al chat</Text>
+              <Text style={styles.btnActionCancelText}>{i18next.t("mensajes.volver")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -354,15 +355,15 @@ export default function MensajeScreen() {
               color="#4ADE80" 
               style={{ alignSelf: 'center', marginBottom: 15 }} 
             />
-            <Text style={styles.modalTitleCenter}>¿Problema resuelto?</Text>
-            <Text style={styles.modalSubtitleCenter}>Se cerrará el chat y podrás calificar la atención.</Text>
+            <Text style={styles.modalTitleCenter}>{i18next.t("mensajes.resuelto")}</Text>
+            <Text style={styles.modalSubtitleCenter}>{i18next.t("mensajes.cerrar")}</Text>
             
             <TouchableOpacity style={styles.btnActionPrimary} onPress={confirmarTerminacion}>
-              <Text style={styles.btnActionPrimaryText}>Sí, terminar y calificar</Text>
+              <Text style={styles.btnActionPrimaryText}>{i18next.t("mensajes.siTerminar")}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.btnActionCancel} onPress={() => setTerminarModalVisible(false)}>
-              <Text style={styles.btnActionCancelText}>Seguir en el chat</Text>
+              <Text style={styles.btnActionCancelText}>{i18next.t("mensajes.seguir")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -372,7 +373,7 @@ export default function MensajeScreen() {
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>¡Califica el apoyo!</Text>
+            <Text style={styles.modalTitle}>{i18next.t("mensajes.califica")}</Text>
             
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((s) => (
@@ -406,7 +407,7 @@ export default function MensajeScreen() {
             />
             
             <TouchableOpacity style={styles.submitButton} onPress={performTermination}>
-              <Text style={styles.submitText}>Enviar y finalizar</Text>
+              <Text style={styles.submitText}>{i18next.t("mensajes.enviar")}</Text>
             </TouchableOpacity>
           </View>
         </View>
