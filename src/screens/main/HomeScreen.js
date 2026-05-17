@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { collection, query, where, getDocs, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
+import i18next from '../../services/staticTL';
 
 
 const AVAILABLE_TAGS = ['Todas', 'Python', 'Programación', 'Matemáticas', 'Estructura de Datos', 'React Native'];
@@ -35,7 +36,7 @@ export default function FeedScreen() {
       const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
-        return Array.isArray(data.habilidades) ? data.habilidades : [];
+        return data;
       }
     } catch (error) {
       console.log('Error al obtener las habilidades del usuario:', error);
@@ -69,8 +70,10 @@ export default function FeedScreen() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const tags = await fetchUserTags();
-      setUserTags(tags);
+      const data = await fetchUserTags();
+      setUserTags(Array.isArray(data.habilidades) ? data.habilidades : []);
+      const lang = data.ln ? data.ln : "es";
+      i18next.changeLanguage(lang);
       await obtenerSolicitudes();
     };
 
@@ -105,19 +108,19 @@ export default function FeedScreen() {
     const pasado = new Date(tiempo).getTime();
     const difSegundos = Math.floor((actual - pasado) / 1000);
 
-    if (difSegundos < 60) return `Hace ${difSegundos} segundos`;
+    if (difSegundos < 60) return i18next.t("tiempo.segundos", {segundos: difSegundos});
 
     const difMinutos = Math.floor(difSegundos / 60);
 
-    if (difMinutos < 60) return `Hace ${difMinutos} minutos`;
+    if (difMinutos < 60) return i18next.t("tiempo.minutos", {minutos: difMinutos});
 
     const difHoras = Math.floor(difMinutos / 60);
 
-    if (difHoras < 24) return `Hace ${difHoras} horas`;
+    if (difHoras < 24) return i18next.t("tiempo.horas", {horas: difHoras});
 
     const difDias = Math.floor(difHoras / 24);
 
-    return `Hace ${difDias} días`;
+    return i18next.t("tiempo.dias", {dias: difDias});
   }
 
   // Logica de filtrado en HomeScreen.js
@@ -160,11 +163,11 @@ export default function FeedScreen() {
   const getPriorityText = (priority) => {
     switch (priority) {
       case 1: 
-        return "Alta";
+        return i18next.t("prioridad.alta");
       case 2:
-        return "Media";
+        return i18next.t("prioridad.media");
       case 3:
-        return "Baja";
+        return i18next.t("prioridad.baja");
       default: return '';
     }
   };
@@ -217,7 +220,7 @@ export default function FeedScreen() {
         <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Filtrar búsqueda"
+          placeholder={i18next.t("home.filtro")}
           placeholderTextColor="#888"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -253,7 +256,7 @@ export default function FeedScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
-            {loading ? 'Cargando...' : 'No se encontraron tickets con esos filtros.'}
+            {loading ? i18next.t("loading") : i18next.t("home.noneFound")}
           </Text>
         }
       />

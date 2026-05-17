@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../services/firebaseConfig';
 import { doc, updateDoc } from 'firebase/firestore'; 
 
+import i18next from '../../services/staticTL';
+
 export default function EditTicketScreen({ route, navigation }) {
   // Recibimos los datos del ticket a editar mediante los parámetros de navegación
   const { ticketData } = route.params || {};
@@ -63,22 +65,22 @@ export default function EditTicketScreen({ route, navigation }) {
 
   const guardarCambios = async () => {
     if (selectedSkills.length === 0) {
-      Alert.alert("Atención", "Favor de seleccionar al menos una etiqueta para la solicitud.");
+      Alert.alert(i18next.t("error.atencion"), i18next.t("error.seleccionMin"));
       return;
     } 
 
     if (!titulo || !desc) {
-      Alert.alert("Error", "Faltan datos en el registro.");
+      Alert.alert("Error", i18next.t("error.faltanDatos"));
       return;
     }
 
     if (!prioridad) {
-      Alert.alert("Atención", "Por favor selecciona un nivel de urgencia.");
+      Alert.alert(i18next.t("error.atencion"), i18next.t("error.seleccionUrgencia"));
       return;
     }
 
     if (!ticketData?.id) {
-      Alert.alert("Error", "No se encontró el ID del ticket para actualizar.");
+      Alert.alert("Error", i18next.t("error.sinId"));
       return;
     }
 
@@ -123,7 +125,7 @@ export default function EditTicketScreen({ route, navigation }) {
           <View style={styles.backButtonIcon}>
             <Ionicons name="arrow-back" size={20} color="#8A8F9E" />
           </View>
-          <Text style={styles.backText}>Regresar</Text>
+          <Text style={styles.backText}>{i18next.t("back")}</Text>
         </TouchableOpacity>
       </View>
       
@@ -132,23 +134,23 @@ export default function EditTicketScreen({ route, navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.titleContainer}>
-          <Text style={styles.creaTicket}>Edita tu ticket</Text>
-          <Text style={styles.creaSub}>Modifica los detalles de tu solicitud de ayuda</Text>
+          <Text style={styles.creaTicket}>{i18next.t("edit.titulo")}</Text>
+          <Text style={styles.creaSub}>{i18next.t("edit.subtitulo")}</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>TÍTULO DEL PROBLEMA</Text>
+        <Text style={styles.sectionLabel}>{i18next.t("crear.tituloProblema")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Ej: No entiendo recursividad en Python"
+          placeholder={i18next.t("crear.tituloPlace")}
           placeholderTextColor="#5E6376"
           value={titulo}
           onChangeText={setTitulo}
         />
 
-        <Text style={styles.sectionLabel}>DESCRIPCIÓN DETALLADA</Text>
+        <Text style={styles.sectionLabel}>{i18next.t("crear.tituloDesc")}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Explica tu duda con más detalle..."
+          placeholder={i18next.t("crear.descPlace")}
           placeholderTextColor="#5E6376"
           multiline={true}
           numberOfLines={4}
@@ -157,7 +159,7 @@ export default function EditTicketScreen({ route, navigation }) {
           onChangeText={setDesc}
         />
 
-        <Text style={styles.sectionLabel}>NIVEL DE URGENCIA</Text>
+        <Text style={styles.sectionLabel}>{i18next.t("crear.urgencia")}</Text>
         <View style={styles.prioridadesContainer}>
           <TouchableOpacity 
             style={[
@@ -196,7 +198,7 @@ export default function EditTicketScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionLabel}>ETIQUETAS (MÁX. 3)</Text>
+        <Text style={styles.sectionLabel}>{i18next.t("crear.tags")}</Text>
         <View style={styles.tagsContainer}>
           {HABILIDADES_INFORMATICA.map((skill, index) => {
             const isSelected = selectedSkills.includes(skill);
@@ -226,7 +228,7 @@ export default function EditTicketScreen({ route, navigation }) {
           onPress={guardarCambios} 
           disabled={loading}
         >
-          <Text style={styles.submitText}>{loading ? "Guardando..." : "Guardar Cambios"}</Text>
+          <Text style={styles.submitText}>{loading ? i18next.t("loadingSave") : i18next.t("edit.guardar")}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -237,8 +239,8 @@ export default function EditTicketScreen({ route, navigation }) {
             <View style={styles.successIconContainer}>
               <Ionicons name="checkmark-circle" size={60} color="#4ADE80" />
             </View>
-            <Text style={styles.modalTitleCenter}>Editado correctamente</Text>
-            <Text style={styles.modalSubtitleCenter}>Tus cambios han sido guardados.</Text>
+            <Text style={styles.modalTitleCenter}>{i18next.t("edit.exito")}</Text>
+            <Text style={styles.modalSubtitleCenter}>{i18next.t("edit.exitoMensaje")}</Text>
           </View>
         </View>
       </Modal>

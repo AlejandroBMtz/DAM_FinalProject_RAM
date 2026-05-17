@@ -5,6 +5,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import i18next from '../../services/staticTL';
 
 export default function NotificationsScreen() {
   const navigation = useNavigation();
@@ -70,11 +71,11 @@ export default function NotificationsScreen() {
           <View style={styles.backButtonIcon}>
             <Ionicons name="arrow-back" size={20} color="#8A8F9E" />
           </View>
-          <Text style={styles.backButtonText}>Regresar</Text>
+          <Text style={styles.backButtonText}>{i18next.t("back")}</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.mainTitle}>Notificaciones</Text>
+      <Text style={styles.mainTitle}>{i18next.t("notif.titulo")}</Text>
 
       {loading ? (
         <View style={styles.centerContainer}>
@@ -82,7 +83,7 @@ export default function NotificationsScreen() {
         </View>
       ) : notificaciones.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>No tienes notificaciones aún.</Text>
+          <Text style={styles.emptyText}>{i18next.t("notif.sinNotif")}</Text>
         </View>
       ) : (
         <ScrollView

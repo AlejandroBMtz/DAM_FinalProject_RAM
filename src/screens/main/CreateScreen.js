@@ -11,6 +11,7 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import i18next from '../../services/staticTL';
 
 // --- Importaciones reales de Firebase ---
 import { auth, db } from '../../services/firebaseConfig';
@@ -58,17 +59,17 @@ export default function Crear({ route, navigation }) {
 
   const CrearSolicitud = async () => {
     if (selectedSkills.length === 0) {
-      Alert.alert("Atención", "Favor de seleccionar al menos una etiqueta para la solicitud.");
+      Alert.alert(i18next.t("error.atencion"), i18next.t("error.seleccionMin"));
       return;
     }
 
     if (!titulo || !desc) {
-      Alert.alert("Error", "Faltan datos de registro.");
+      Alert.alert("Error", i18next.t("error.faltanDatos"));
       return;
     }
 
     if (!prioridad) {
-      Alert.alert("Atención", "Por favor selecciona un nivel de urgencia.");
+      Alert.alert(i18next.t("error.atencion"), i18next.t("error.seleccionUrgencia"));
       return;
     }
 
@@ -151,7 +152,7 @@ export default function Crear({ route, navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Pedir ayuda</Text>
+        <Text style={styles.headerTitle}>{i18next.t("crear.titulo")}</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
           <Ionicons name="notifications" size={24} color="white" />
         </TouchableOpacity>
@@ -162,23 +163,23 @@ export default function Crear({ route, navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.titleContainer}>
-          <Text style={styles.creaTicket}>Crea tu ticket</Text>
-          <Text style={styles.creaSub}>Alguien de la facultad puede ayudarte</Text>
+          <Text style={styles.creaTicket}>{i18next.t("crear.subtitulo")}</Text>
+          <Text style={styles.creaSub}>{i18next.t("crear.subtexto")}</Text>
         </View>
 
-        <Text style={styles.sectionLabel}>TÍTULO DEL PROBLEMA</Text>
+        <Text style={styles.sectionLabel}>{i18next.t("crear.tituloProblema")}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Ej: No entiendo recursividad en Python"
+          placeholder={i18next.t("crear.tituloPlace")}
           placeholderTextColor="#5E6376"
           value={titulo}
           onChangeText={setTitulo}
         />
 
-        <Text style={styles.sectionLabel}>DESCRIPCIÓN DETALLADA</Text>
+        <Text style={styles.sectionLabel}>{i18next.t("crear.tituloDesc")}</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="Explica tu duda con más detalle.&#10;Entre más info, más fácil es ayudarte..."
+          placeholder={i18next.t("crear.descPlace")}
           placeholderTextColor="#5E6376"
           multiline={true}
           numberOfLines={4}
@@ -187,7 +188,7 @@ export default function Crear({ route, navigation }) {
           onChangeText={setDesc}
         />
 
-        <Text style={styles.sectionLabel}>NIVEL DE URGENCIA</Text>
+        <Text style={styles.sectionLabel}>{i18next.t("crear.urgencia")}</Text>
         <View style={styles.prioridadesContainer}>
           <TouchableOpacity
             style={[
@@ -198,7 +199,7 @@ export default function Crear({ route, navigation }) {
             activeOpacity={0.7}
           >
             <View style={[styles.dot, { backgroundColor: '#FF4D4D' }]} />
-            <Text style={styles.prioText}>Alta</Text>
+            <Text style={styles.prioText}>{i18next.t("prioridad.alta")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -210,7 +211,7 @@ export default function Crear({ route, navigation }) {
             activeOpacity={0.7}
           >
             <View style={[styles.dot, { backgroundColor: '#FFD166' }]} />
-            <Text style={styles.prioText}>Media</Text>
+            <Text style={styles.prioText}>{i18next.t("prioridad.media")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -222,11 +223,11 @@ export default function Crear({ route, navigation }) {
             activeOpacity={0.7}
           >
             <View style={[styles.dot, { backgroundColor: '#4ADE80' }]} />
-            <Text style={styles.prioText}>Baja</Text>
+            <Text style={styles.prioText}>{i18next.t("prioridad.baja")}</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionLabel}>ETIQUETAS (MÁX. 3)</Text>
+        <Text style={styles.sectionLabel}>{i18next.t("crear.tags")}</Text>
         <View style={styles.tagsContainer}>
           {HABILIDADES_INFORMATICA.map((skill, index) => {
             const isSelected = selectedSkills.includes(skill);
@@ -252,7 +253,7 @@ export default function Crear({ route, navigation }) {
         </View>
 
         <TouchableOpacity style={styles.submit} onPress={CrearSolicitud} disabled={loading}>
-          <Text style={styles.submitText}>Crear Solicitud</Text>
+          <Text style={styles.submitText}>{i18next.t("crear.crear")}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

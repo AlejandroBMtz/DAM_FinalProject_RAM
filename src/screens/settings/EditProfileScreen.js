@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../../services/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
+import i18next from '../../services/staticTL';
 
 const CARRERAS = [
   'Licenciatura en Informática',
@@ -159,9 +160,9 @@ export default function EditProfileScreen({ navigation }) {
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="chevron-left" size={22} color="#9CA3AF" />
-          <Text style={styles.backText}>Regresar</Text>
+          <Text style={styles.backText}>{i18next.t("back")}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Editar perfil</Text>
+        <Text style={styles.headerTitle}>{i18next.t("profile.edit.titulo")}</Text>
         <View style={{ width: 80 }} />
       </View>
 
@@ -181,19 +182,19 @@ export default function EditProfileScreen({ navigation }) {
               <MaterialCommunityIcons name="camera" size={18} color="#fff" />
             </View>
           </TouchableOpacity>
-          <Text style={styles.photoHint}>Editar foto</Text>
+          <Text style={styles.photoHint}>{i18next.t("profile.edit.foto")}</Text>
         </View>
 
         {/*  NOMBRE  */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>NOMBRE</Text>
+          <Text style={styles.fieldLabel}>{i18next.t("profile.edit.nombre")}</Text>
           <View style={styles.inputRow}>
             <MaterialCommunityIcons name="account-outline" size={18} color="#4B5563" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               value={nombre}
               onChangeText={setNombre}
-              placeholder="Tu nombre completo"
+              placeholder={i18next.t("profile.edit.nombrePlace")}
               placeholderTextColor="#4B5563"
               autoCapitalize="words"
             />
@@ -202,7 +203,7 @@ export default function EditProfileScreen({ navigation }) {
 
         {/*  CARRERA  */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>CARRERA</Text>
+          <Text style={styles.fieldLabel}>{i18next.t("profile.edit.carrera")}</Text>
           <TouchableOpacity style={styles.selector} onPress={() => setModalCarrera(true)} activeOpacity={0.7}>
             <MaterialCommunityIcons name="school-outline" size={18} color="#4B5563" style={styles.inputIcon} />
             <Text style={[styles.selectorText, !carrera && styles.placeholder]} numberOfLines={1}>
@@ -214,11 +215,11 @@ export default function EditProfileScreen({ navigation }) {
 
         {/* SEMESTRE  */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>SEMESTRE</Text>
+          <Text style={styles.fieldLabel}>{i18next.t("profile.edit.semestre")}</Text>
           <TouchableOpacity style={styles.selector} onPress={() => setModalSemestre(true)} activeOpacity={0.7}>
             <MaterialCommunityIcons name="calendar-outline" size={18} color="#4B5563" style={styles.inputIcon} />
             <Text style={[styles.selectorText, !semestre && styles.placeholder]}>
-              {semestre ? `${semestre}° Semestre` : 'Selecciona tu semestre'}
+              {semestre ? `${semestre}° ${i18next.t("profile.semestre")}` : 'Selecciona tu semestre'}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#4B5563" />
           </TouchableOpacity>
@@ -226,8 +227,8 @@ export default function EditProfileScreen({ navigation }) {
 
         {/* HABILIDADES */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>HABILIDADES</Text>
-          <Text style={styles.fieldHint}>Selecciona las áreas en las que puedes apoyar</Text>
+          <Text style={styles.fieldLabel}>{i18next.t("profile.edit.habilidades")}</Text>
+          <Text style={styles.fieldHint}>{i18next.t("profile.edit.selecciona")}</Text>
           <View style={styles.tagsGrid}>
             {HABILIDADES.map((skill) => {
               const active = habilidades.includes(skill);
@@ -255,7 +256,7 @@ export default function EditProfileScreen({ navigation }) {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveBtnText}>Guardar cambios</Text>
+            <Text style={styles.saveBtnText}>{i18next.t("profile.edit.guardar")}</Text>
           )}
         </TouchableOpacity>
 
@@ -267,7 +268,7 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
             <View style={styles.dragHandle} />
-            <Text style={styles.modalTitle}>Selecciona tu carrera</Text>
+            <Text style={styles.modalTitle}>{i18next.t("profile.edit.selectCarrera")}</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {CARRERAS.map((item) => (
                 <TouchableOpacity
@@ -291,7 +292,7 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, { maxHeight: '55%' }]}>
             <View style={styles.dragHandle} />
-            <Text style={styles.modalTitle}>Selecciona tu semestre</Text>
+            <Text style={styles.modalTitle}>{i18next.t("profile.edit.selectSemestre")}</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {SEMESTRES.map((item) => (
                 <TouchableOpacity
@@ -300,7 +301,7 @@ export default function EditProfileScreen({ navigation }) {
                   onPress={() => { setSemestre(item); setModalSemestre(false); }}
                 >
                   <Text style={[styles.modalOptionText, semestre === item && styles.modalOptionTextActive]}>
-                    {item}° Semestre
+                    {item}° {i18next.t("profile.semestre")}
                   </Text>
                   {semestre === item && <Ionicons name="checkmark" size={16} color="#4F46E5" />}
                 </TouchableOpacity>
@@ -482,6 +483,34 @@ const styles = StyleSheet.create({
   },
   tagTextActive: { 
     color: '#818CF8' 
+  },
+  languageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  languageButton: {
+    flex: 1,
+    paddingVertical: 12,
+    marginRight: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1F2937',
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  languageButtonActive: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  languageButtonText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  languageButtonTextActive: {
+    color: '#FFFFFF',
   },
 
   // Save button

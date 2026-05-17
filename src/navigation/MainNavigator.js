@@ -20,6 +20,7 @@ import EditarTicketScreen from '../screens/main/EditTicketScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditProfileScreen from '../screens/settings/EditProfileScreen';
 import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
+import ChangeLanguageScreen from '../screens/settings/ChangeLanguageScreen';
 import TermsScreen from '../screens/settings/termsConditions';
 import PrivacyScreen from '../screens/settings/politicasPrivacidad';
 
@@ -31,6 +32,7 @@ const Stack = createNativeStackNavigator();
 const HIDDEN_ON = new Set([
   'EditProfileScreen',
   'ChangePasswordScreen',
+  'ChangeLanguageScreen',
   'SettingsScreen',
   'EditarTicketScreen',
   'TicketScreen',
@@ -105,6 +107,7 @@ function ProfileStackNavigator() {
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
       <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
       <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
+      <Stack.Screen name="ChangeLanguageScreen" component={ChangeLanguageScreen} />
       <Stack.Screen name="TermsScreen" component={TermsScreen} />
       <Stack.Screen name="PrivacyScreen" component={PrivacyScreen} />
     </Stack.Navigator>
