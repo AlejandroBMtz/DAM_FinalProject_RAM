@@ -12,6 +12,7 @@ import {
   Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; 
+import i18next from '../../services/staticTL';
 
 // --- Importaciones reales de Firebase ---
 import { auth, db } from '../../services/firebaseConfig';
@@ -61,31 +62,31 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
 
   const getFriendlyError = (code) => {
     switch (code) {
-      case 'auth/email-already-in-use': return "Este correo ya está registrado.";
-      case 'auth/invalid-email': return "El formato del correo es inválido.";
-      case 'auth/weak-password': return "La contraseña es muy débil.";
-      default: return "Ocurrió un error al registrar. Intenta de nuevo.";
+      case 'auth/email-already-in-use': return i18next.t('auth.register.errors.emailInUse');
+      case 'auth/invalid-email': return i18next.t('auth.register.errors.invalidEmail');
+      case 'auth/weak-password': return i18next.t('auth.register.errors.weakPassword');
+      default: return i18next.t('auth.register.errors.default');
     }
   };
 
   const finalizarRegistro = async () => {
     if (!carrera) {
-      Alert.alert("Atención", "Por favor selecciona tu carrera.");
+      Alert.alert(i18next.t('error.atencion'), i18next.t('auth.register.errors.missingCareer'));
       return;
     }
 
     if (!semestre) {
-      Alert.alert("Atención", "Por favor selecciona tu semestre.");
+      Alert.alert(i18next.t('error.atencion'), i18next.t('auth.register.errors.missingSemester'));
       return;
     }
 
     if (selectedSkills.length === 0) {
-      Alert.alert("Atención", "Por favor selecciona al menos una habilidad para compartir.");
+      Alert.alert(i18next.t('error.atencion'), i18next.t('auth.register.errors.missingSkills'));
       return;
     }
 
     if (!email || !password || !nombre) {
-      Alert.alert("Error", "Faltan datos de registro. Por favor vuelve al paso anterior.");
+      Alert.alert(i18next.t('error.genericHeader'), i18next.t('auth.register.errors.missingRegistrationData'));
       return;
     }
 
@@ -123,8 +124,8 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#0B0D14" />
       
       <View style={styles.header}>
-        <Text style={styles.title}>Tus habilidades</Text>
-        <Text style={styles.subtitle}>Cuéntanos un poco más sobre ti</Text>
+        <Text style={styles.title}>{i18next.t('auth.register.title')}</Text>
+        <Text style={styles.subtitle}>{i18next.t('auth.register.subtitle')}</Text>
       </View>
 
       <ScrollView 
@@ -132,32 +133,33 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* --- SELECTOR DE CARRERA --- */}
-        <Text style={styles.sectionLabel}>CARRERA</Text>
+        <Text style={styles.sectionLabel}>{i18next.t('auth.register.careerLabel')}</Text>
         <TouchableOpacity 
           style={styles.selectorButton} 
           onPress={() => setModalCarreraVisible(true)}
           activeOpacity={0.7}
         >
           <Text style={[styles.selectorText, !carrera && styles.placeholderText]}>
-            {carrera ? carrera : "Selecciona tu carrera"}
+            {carrera ? carrera : i18next.t('auth.register.careerPlaceholder')}
           </Text>
           <Ionicons name="chevron-down" size={20} color="#7E8494" />
         </TouchableOpacity>
 
         {/* --- SELECTOR DE SEMESTRE --- */}
-        <Text style={styles.sectionLabel}>SEMESTRE</Text>
+        <Text style={styles.sectionLabel}>{i18next.t('auth.register.semesterLabel')}</Text>
         <TouchableOpacity 
           style={styles.selectorButton} 
           onPress={() => setModalSemestreVisible(true)}
           activeOpacity={0.7}
         >
           <Text style={[styles.selectorText, !semestre && styles.placeholderText]}>
-            {semestre ? `${semestre}° Semestre` : "Selecciona tu semestre"}
+            {semestre ? `${semestre}° ${i18next.t('profile.semestre')}` : i18next.t('auth.register.semesterPlaceholder')}
           </Text>
           <Ionicons name="chevron-down" size={20} color="#7E8494" />
         </TouchableOpacity>
 
-        <Text style={[styles.sectionLabel, { marginTop: 10 }]}>HABILIDADES (INFORMÁTICA)</Text>
+        <Text style={[styles.sectionLabel, { marginTop: 10 }]}>{i18next.t('auth.register.skillsLabel')}</Text>
+        <Text style={styles.sectionSubtitle}>{i18next.t('auth.register.skillsHint')}</Text>
         <View style={styles.tagsContainer}>
           {HABILIDADES_INFORMATICA.map((skill, index) => {
             const isSelected = selectedSkills.includes(skill);
@@ -193,7 +195,7 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
           {loading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.primaryButtonText}>Listo</Text>
+            <Text style={styles.primaryButtonText}>{i18next.t('auth.register.readyButton')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -208,7 +210,7 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.dragIndicator} />
-            <Text style={styles.modalTitle}>Selecciona tu carrera</Text>
+            <Text style={styles.modalTitle}>{i18next.t('auth.register.selectCareer')}</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {CARRERAS.map((item, index) => (
                 <TouchableOpacity
@@ -242,7 +244,7 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.dragIndicator} />
-            <Text style={styles.modalTitle}>Selecciona tu semestre</Text>
+            <Text style={styles.modalTitle}>{i18next.t('auth.register.selectSemester')}</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {SEMESTRES.map((item, index) => (
                 <TouchableOpacity
@@ -303,6 +305,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 10,
     marginTop: 15,
+  },
+  sectionSubtitle: {
+    color: '#6B7280',
+    fontSize: 12,
+    marginBottom: 10,
   },
   selectorButton: {
     flexDirection: 'row',

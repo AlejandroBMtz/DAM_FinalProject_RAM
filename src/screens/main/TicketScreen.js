@@ -54,7 +54,7 @@ export default function TicketScreen({ route }) {
       case 1: return { text: i18next.t("prioridad.alta"), color: '#FF4D4D', bg: 'rgba(255, 77, 77, 0.1)' };
       case 2: return { text: i18next.t("prioridad.media"), color: '#FFD166', bg: 'rgba(255, 209, 102, 0.1)' };
       case 3: return { text: i18next.t("prioridad.baja"), color: '#4ADE80', bg: 'rgba(74, 222, 128, 0.1)' };
-      default: return { text: 'Normal', color: '#888', bg: '#222' };
+      default: return { text: i18next.t('prioridad.normal'), color: '#888', bg: '#222' };
     }
   };
 
@@ -147,7 +147,7 @@ export default function TicketScreen({ route }) {
 
     } catch (error) {
       console.log("Error en Firebase:", error);
-      Alert.alert("Error", error.message || String(error));
+      Alert.alert(i18next.t('error.genericHeader'), error.message || String(error));
     }
   }
 
@@ -203,7 +203,7 @@ export default function TicketScreen({ route }) {
             </Text>
 
             <Text style={styles.userCareer}>
-              {creator?.carrera || 'Estudiante'} 
+              {creator?.carrera || i18next.t('profile.student')} 
               {creator?.semestre ? ` - ${creator.semestre}° ${i18next.t("profile.semestre")}` : ''}
             </Text>
 

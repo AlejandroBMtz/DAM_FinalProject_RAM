@@ -17,6 +17,73 @@ i18next.init({
         reportar: "Report",
         enviarReporte: "Send Report",
         tutor: "as tutor",
+        student: "Student",
+        ok: "OK",
+        genericHeader: "Error",
+        auth: {
+          login: {
+            title: "Welcome",
+            subtitle: "Log in to your account",
+            emailLabel: "Email address",
+            emailPlaceholder: "correo@alumnos.uaq.mx",
+            passwordLabel: "Password",
+            passwordPlaceholder: "••••••••",
+            rememberMe: "Remember me",
+            forgotPassword: "Forgot your password?",
+            loginButton: "Log in",
+            continueWith: "or continue with",
+            google: "Google",
+            noAccount: "Don't have an account?",
+            registerHere: "Sign up here",
+            errors: {
+              invalidEmail: "Invalid email address",
+              invalidCredential: "Incorrect credentials",
+              userNotFound: "User not found",
+              wrongPassword: "Wrong password",
+              emailRequired: "Email is required.",
+              emailInstitutional: "Use an institutional email (@alumnos.uaq.mx).",
+              passwordRequired: "Password is required.",
+              default: "An error occurred. Try again."
+            }
+          },
+          register: {
+            title: "Your skills",
+            subtitle: "Tell us a bit more about yourself",
+            careerLabel: "TRACK",
+            careerPlaceholder: "Select your track",
+            semesterLabel: "SEMESTER",
+            semesterPlaceholder: "Select your semester",
+            skillsLabel: "SKILLS",
+            skillsHeader: "COMPUTER SCIENCE SKILLS",
+            skillsHint: "Tap the areas where you can help",
+            readyButton: "Ready",
+            selectCareer: "Select your track",
+            selectSemester: "Select your semester",
+            errors: {
+              emailInUse: "This email is already registered.",
+              invalidEmail: "The email format is invalid.",
+              weakPassword: "The password is too weak.",
+              default: "An error occurred during registration. Try again.",
+              missingCareer: "Please select your track.",
+              missingSemester: "Please select your semester.",
+              missingSkills: "Please select at least one skill to share.",
+              missingRegistrationData: "Missing registration data. Please go back."
+            }
+          }
+        },
+        tutorial: {
+          skip: "Skip",
+          next: "Next",
+          done: "Done",
+          welcomeTitle: "Welcome to RAM",
+          welcomeSubtitle: "Learn quickly how to create, manage and review your tickets.",
+          messagesTitle: "Messages and Notifications",
+          messagesSubtitle: "Receive real-time updates and reply from the app.",
+          createTitle: "Create tickets easily",
+          createSubtitle: "Select a type, add a description and send your ticket in seconds.",
+          profileTitle: "Profile and settings",
+          profileSubtitle: "Edit your account, change password and set your preferences."
+        },
         desconocido: "Unknown user",
         eliminar: "Delete",
         dias: {
@@ -114,6 +181,20 @@ i18next.init({
             },
             coinciden: "✓ The passwords match",
             noCoinciden: "✗ The passwords don't match yet",
+            error: {
+              currentRequired: "Enter your current password.",
+              newRequired: "Enter a new password.",
+              minLength: "Must have at least 8 characters.",
+              requirements: "Include uppercase, lowercase, number and symbol.",
+              confirmRequired: "Confirm your new password.",
+              noMatch: "Passwords do not match.",
+              currentIncorrect: "The current password is incorrect.",
+              sessionExpiredTitle: "Session expired",
+              sessionExpiredMessage: "For security, log in again and try again.",
+              generic: "Could not change the password. Please try again."
+            },
+            successPasswordTitle: "Password updated!",
+            successPasswordMessage: "Your password has been changed successfully.",
             strength: {
               debil: "Weak",
               regular: "Regular",
@@ -153,6 +234,9 @@ i18next.init({
             politicas: "Privacy Policies"
           },
           cerrar: "Close Session",
+          languageUpdatedTitle: "Done!",
+          languageUpdatedSuccess: "Your profile was updated successfully.",
+          languageUpdatedError: "Could not save your profile. Please try again.",
           eliminar: {
             titulo: "ACCOUNT",
             eliminar: "Delete Account"
@@ -220,6 +304,7 @@ i18next.init({
           alta: "High",
           media: "Medium",
           baja: "Low",
+          normal: "Normal"
         },
         tiempo: {
           segundos: "{{- segundos}} seconds ago",
@@ -273,6 +358,70 @@ i18next.init({
         reportar: "Reportar",
         enviarReporte: "Enviar Reporte",
         tutor: "como tutor",
+        student: "Estudiante",
+        ok: "OK",
+        genericHeader: "Error",
+        auth: {
+          login: {
+            title: "Bienvenido",
+            subtitle: "Inicia sesión en tu cuenta",
+            emailLabel: "Correo electrónico",
+            emailPlaceholder: "correo@alumnos.uaq.mx",
+            passwordLabel: "Contraseña",
+            passwordPlaceholder: "••••••••",
+            rememberMe: "Recordarme",
+            forgotPassword: "¿Olvidaste tu contraseña?",
+            loginButton: "Iniciar sesión",
+            continueWith: "o continúa con",
+            google: "Google",
+            noAccount: "¿No tienes una cuenta?",
+            registerHere: "Regístrate aquí",
+            errors: {
+              invalidEmail: "Correo inválido",
+              invalidCredential: "Credenciales incorrectas",
+              userNotFound: "Usuario no encontrado",
+              wrongPassword: "Contraseña incorrecta",
+              default: "Ocurrió un error. Intenta de nuevo."
+            }
+          },
+          register: {
+            title: "Tus habilidades",
+            subtitle: "Cuéntanos un poco más sobre ti",
+            careerLabel: "CARRERA",
+            careerPlaceholder: "Selecciona tu carrera",
+            semesterLabel: "SEMESTRE",
+            semesterPlaceholder: "Selecciona tu semestre",
+            skillsLabel: "HABILIDADES",
+            skillsHeader: "HABILIDADES (INFORMÁTICA)",
+            skillsHint: "Toca las áreas en las que puedes apoyar",
+            readyButton: "Listo",
+            selectCareer: "Selecciona tu carrera",
+            selectSemester: "Selecciona tu semestre",
+            errors: {
+              emailInUse: "Este correo ya está registrado.",
+              invalidEmail: "El formato del correo es inválido.",
+              weakPassword: "La contraseña es muy débil.",
+              default: "Ocurrió un error al registrar. Intenta de nuevo.",
+              missingCareer: "Por favor selecciona tu carrera.",
+              missingSemester: "Por favor selecciona tu semestre.",
+              missingSkills: "Por favor selecciona al menos una habilidad para compartir.",
+              missingRegistrationData: "Faltan datos de registro. Por favor vuelve al paso anterior."
+            }
+          }
+        },
+        tutorial: {
+          skip: "Saltar",
+          next: "Siguiente",
+          done: "Listo",
+          welcomeTitle: "Bienvenido a RAM",
+          welcomeSubtitle: "Aprende rápido cómo crear, gestionar y revisar tus tickets.",
+          messagesTitle: "Mensajes y notificaciones",
+          messagesSubtitle: "Recibe actualizaciones en tiempo real y responde desde la app.",
+          createTitle: "Crea tickets fácilmente",
+          createSubtitle: "Selecciona un tipo, agrega descripción y envía tu ticket en segundos.",
+          profileTitle: "Perfil y ajustes",
+          profileSubtitle: "Edita tu cuenta, cambia contraseña y configura tus preferencias."
+        },
         desconocido: "Usuario desconocido",
         eliminar: "Eliminar",
         dias: {
@@ -370,6 +519,20 @@ i18next.init({
             },
             coinciden: "✓ Las contraseñas coinciden",
             noCoinciden: "✗ No coinciden aún",
+            error: {
+              currentRequired: "Ingresa tu contraseña actual.",
+              newRequired: "Ingresa una nueva contraseña.",
+              minLength: "Debe tener al menos 8 caracteres.",
+              requirements: "Debe incluir mayúscula, minúscula, número y un símbolo.",
+              confirmRequired: "Confirma tu nueva contraseña.",
+              noMatch: "Las contraseñas no coinciden.",
+              currentIncorrect: "La contraseña actual es incorrecta.",
+              sessionExpiredTitle: "Sesión expirada",
+              sessionExpiredMessage: "Por seguridad, vuelve a iniciar sesión e intenta de nuevo.",
+              generic: "No se pudo cambiar la contraseña. Intenta de nuevo."
+            },
+            successPasswordTitle: "¡Contraseña actualizada!",
+            successPasswordMessage: "Tu contraseña fue cambiada exitosamente.",
             strength: {
               debil: "Débil",
               regular: "Regular",
@@ -409,6 +572,9 @@ i18next.init({
             politicas: "Políticas de Privacidad"
           },
           cerrar: "Cerrar Sesión",
+          languageUpdatedTitle: "¡Listo!",
+          languageUpdatedSuccess: "Tu perfil fue actualizado correctamente.",
+          languageUpdatedError: "No se pudo guardar el perfil. Intenta de nuevo.",
           eliminar: {
             titulo: "CUENTA",
             eliminar: "Eliminar Cuenta"
@@ -476,6 +642,7 @@ i18next.init({
           alta: "Alta",
           media: "Media",
           baja: "Baja",
+          normal: "Normal"
         },
         tiempo: {
           segundos: "Hace {{- segundos}} segundos",

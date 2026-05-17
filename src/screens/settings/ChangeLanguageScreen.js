@@ -42,11 +42,11 @@ export default function EditProfileScreen({ navigation }) {
 
       await updateDoc(doc(db, 'users', auth.currentUser.uid), updateData);
       i18next.changeLanguage(preferredLanguage);
-      Alert.alert('¡Listo!', 'Tu perfil fue actualizado correctamente.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert(i18next.t('settings.languageUpdatedTitle'), i18next.t('settings.languageUpdatedSuccess'), [
+        { text: i18next.t('ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (e) {
-      Alert.alert('Error', 'No se pudo guardar el perfil. Intenta de nuevo.');
+      Alert.alert(i18next.t('error.genericHeader'), i18next.t('settings.languageUpdatedError'));
       console.log(e);
     } finally {
       setSaving(false);

@@ -11,6 +11,7 @@ import {
   Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import i18next from '../../services/staticTL';
 
 // Importaciones de Firebase
 import { auth } from '../../services/firebaseConfig';
@@ -31,11 +32,11 @@ const LoginScreen = ({ navigation }) => {
   // Traduccion de errores de Firebase
   const getFriendlyError = (code) => {
     switch (code) {
-      case 'auth/invalid-email': return "Correo inválido";
-      case 'auth/invalid-credential': return "Credenciales incorrectas";
-      case 'auth/user-not-found': return "Usuario no encontrado";
-      case 'auth/wrong-password': return "Contraseña incorrecta";
-      default: return "Ocurrió un error. Intenta de nuevo";
+      case 'auth/invalid-email': return i18next.t('auth.login.errors.invalidEmail');
+      case 'auth/invalid-credential': return i18next.t('auth.login.errors.invalidCredential');
+      case 'auth/user-not-found': return i18next.t('auth.login.errors.userNotFound');
+      case 'auth/wrong-password': return i18next.t('auth.login.errors.wrongPassword');
+      default: return i18next.t('auth.login.errors.default');
     }
   };
 
@@ -46,16 +47,16 @@ const LoginScreen = ({ navigation }) => {
 
     // Validacion de correo institucional
     if (!email) {
-      setEmailError('El correo es obligatorio.');
+      setEmailError(i18next.t('auth.login.errors.emailRequired'));
       isValid = false;
     } else if (!email.trim().endsWith('@alumnos.uaq.mx')) {
-      setEmailError('Debe ser un correo institucional (@alumnos.uaq.mx).');
+      setEmailError(i18next.t('auth.login.errors.emailInstitutional'));
       isValid = false;
     }
 
     // Validacion de contraseña
     if (!password) {
-      setPasswordError('La contraseña es obligatoria.');
+      setPasswordError(i18next.t('auth.login.errors.passwordRequired'));
       isValid = false;
     } 
 
@@ -88,17 +89,17 @@ const LoginScreen = ({ navigation }) => {
         <Image source={require('../../../assets/images/Logo.png')} style={{ width: 150, height: 150, resizeMode: 'contain' }} />
       </View>
 
-      <Text style={styles.title}>Bienvenido</Text>
-      <Text style={styles.subtitle}>Inicia sesión en tu cuenta</Text>
+      <Text style={styles.title}>{i18next.t('auth.login.title')}</Text>
+      <Text style={styles.subtitle}>{i18next.t('auth.login.subtitle')}</Text>
 
       {/* Input Correo */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Correo electrónico</Text>
+        <Text style={styles.label}>{i18next.t('auth.login.emailLabel')}</Text>
         <View style={[styles.inputContainer, emailError ? styles.inputError : null]}>
           <MaterialCommunityIcons name="email-outline" size={20} color="#7E8494" style={styles.icon} />
           <TextInput
             style={styles.input}
-            placeholder="correo@alumnos.uaq.mx"
+            placeholder={i18next.t('auth.login.emailPlaceholder')}
             placeholderTextColor="#7E8494"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -114,12 +115,12 @@ const LoginScreen = ({ navigation }) => {
 
       {/* Input Contraseña */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Contraseña</Text>
+        <Text style={styles.label}>{i18next.t('auth.login.passwordLabel')}</Text>
         <View style={[styles.inputContainer, passwordError ? styles.inputError : null]}>
           <MaterialCommunityIcons name="lock-outline" size={20} color="#7E8494" style={styles.icon} />
           <TextInput
             style={styles.input}
-            placeholder="••••••••"
+            placeholder={i18next.t('auth.login.passwordPlaceholder')}
             placeholderTextColor="#7E8494"
             secureTextEntry={!showPassword}
             value={password}
@@ -147,10 +148,10 @@ const LoginScreen = ({ navigation }) => {
             size={20} 
             color={rememberMe ? "#2563EB" : "#7E8494"} 
           />
-          <Text style={styles.checkboxText}>Recordarme</Text>
+          <Text style={styles.checkboxText}>{i18next.t('auth.login.rememberMe')}</Text>
         </TouchableOpacity>
         <TouchableOpacity>
-          <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+          <Text style={styles.forgotText}>{i18next.t('auth.login.forgotPassword')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -163,25 +164,25 @@ const LoginScreen = ({ navigation }) => {
         {loading ? (
           <ActivityIndicator color="#FFF" />
         ) : (
-          <Text style={styles.loginButtonText}>Iniciar sesión</Text>
+          <Text style={styles.loginButtonText}>{i18next.t('auth.login.loginButton')}</Text>
         )}
       </TouchableOpacity>
 
       <View style={styles.dividerContainer}>
         <View style={styles.divider} />
-        <Text style={styles.dividerText}>o continúa con</Text>
+        <Text style={styles.dividerText}>{i18next.t('auth.login.continueWith')}</Text>
         <View style={styles.divider} />
       </View>
 
       <TouchableOpacity style={styles.googleButton}>
         <MaterialCommunityIcons name="google" size={20} color="#FFF" style={{ marginRight: 10 }} />
-        <Text style={styles.googleButtonText}>Google</Text>
+        <Text style={styles.googleButtonText}>{i18next.t('auth.login.google')}</Text>
       </TouchableOpacity>
 
       <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>¿No tienes una cuenta? </Text>
+        <Text style={styles.registerText}>{i18next.t('auth.login.noAccount')}</Text>
         <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-          <Text style={styles.registerLink}>Regístrate aquí</Text>
+          <Text style={styles.registerLink}>{i18next.t('auth.login.registerHere')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

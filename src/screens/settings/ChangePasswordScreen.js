@@ -65,20 +65,20 @@ export default function ChangePasswordScreen({ navigation }) {
 
   const validate = () => {
     const e = {};
-    if (!current.trim()) e.current = 'Ingresa tu contraseña actual.';
+    if (!current.trim()) e.current = i18next.t('profile.edit.error.currentRequired');
 
     if (!next) {
-      e.next = 'Ingresa una nueva contraseña.';
+      e.next = i18next.t('profile.edit.error.newRequired');
     } else if (next.length < 8) {
-      e.next = 'Debe tener al menos 8 caracteres.';
+      e.next = i18next.t('profile.edit.error.minLength');
     } else if (!/[A-Z]/.test(next) || !/[a-z]/.test(next) || !/\d/.test(next) || !/[!@#$%^&*(),.?":{}|<>]/.test(next)) {
-      e.next = 'Debe incluir mayúscula, minúscula, número y un símbolo.';
+      e.next = i18next.t('profile.edit.error.requirements');
     }
 
     if (!confirm) {
-      e.confirm = 'Confirma tu nueva contraseña.';
+      e.confirm = i18next.t('profile.edit.error.confirmRequired');
     } else if (next !== confirm) {
-      e.confirm = 'Las contraseñas no coinciden.';
+      e.confirm = i18next.t('profile.edit.error.noMatch');
     }
 
     setErrors(e);
@@ -95,19 +95,19 @@ export default function ChangePasswordScreen({ navigation }) {
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, next);
 
-      Alert.alert('¡Contraseña actualizada!', 'Tu contraseña fue cambiada exitosamente.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert(i18next.t('profile.edit.successPasswordTitle'), i18next.t('profile.edit.successPasswordMessage'), [
+        { text: i18next.t('ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
       if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        setErrors({ current: 'La contraseña actual es incorrecta.' });
+        setErrors({ current: i18next.t('profile.edit.error.currentIncorrect') });
       } else if (error.code === 'auth/requires-recent-login') {
         Alert.alert(
-          'Sesión expirada',
-          'Por seguridad, vuelve a iniciar sesión e intenta de nuevo.'
+          i18next.t('profile.edit.error.sessionExpiredTitle'),
+          i18next.t('profile.edit.error.sessionExpiredMessage')
         );
       } else {
-        Alert.alert('Error', 'No se pudo cambiar la contraseña. Intenta de nuevo.');
+        Alert.alert(i18next.t('error.genericHeader'), i18next.t('profile.edit.error.generic')); 
         console.log(error);
       }
     } finally {
