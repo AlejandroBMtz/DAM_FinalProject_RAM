@@ -5,6 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { auth, db } from '../../services/firebaseConfig'; // Asegúrate de exportar 'db' en tu config
 import { signOut } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import i18next from '../../services/staticTL';
 
 const SectionLabel = ({ title }) => (
   <Text style={styles.sectionLabel}>{title}</Text>
@@ -88,18 +89,18 @@ const SettingsScreen = () => {
 
   const handleLogout = () => {
     Alert.alert(
-      'Cerrar sesión',
-      '¿Estás seguro de que deseas salir de tu cuenta?',
+      i18next.t("profile.cerrarSesion"),
+      i18next.t("profile.cerrarConfirmacion"),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: i18next.t("cancelar"), style: 'cancel' },
         {
-          text: 'Sí, salir',
+          text: i18next.t("profile.si"),
           style: 'destructive',
           onPress: async () => {
             try {
               await signOut(auth);
             } catch (error) {
-              Alert.alert('Error', 'No se pudo cerrar la sesión.');
+              Alert.alert('Error', i18next.t("profile.errorCerrar"));
             }
           },
         },
@@ -109,11 +110,11 @@ const SettingsScreen = () => {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Eliminar cuenta',
-      'Esta acción es irreversible. ¿Seguro que deseas eliminar tu cuenta?',
+      i18next.t("profile.eliminar"),
+      i18next.t("profile.eliminarConfirmacion"),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => { } },
+        { text: i18next.t("cancelar"), style: 'cancel' },
+        { text: i18next.t("eliminar"), style: 'destructive', onPress: () => { } },
       ]
     );
   };
@@ -134,39 +135,39 @@ const SettingsScreen = () => {
 
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
         <MaterialCommunityIcons name="chevron-left" size={22} color="#9CA3AF" />
-        <Text style={styles.backText}>Regresar</Text>
+        <Text style={styles.backText}>{i18next.t("back")}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.screenTitle}>Ajustes</Text>
+      <Text style={styles.screenTitle}>{i18next.t("settings.titulo")}</Text>
 
-      <SectionLabel title="CUENTA" />
+      <SectionLabel title={i18next.t("settings.cuenta.titulo")} />
       <View style={styles.group}>
         <SettingRow
           icon="account-edit-outline"
-          label="Editar datos personales"
+          label={i18next.t("settings.cuenta.editar")}
           onPress={() => navigation.navigate('EditProfileScreen')}
         />
         <View style={styles.divider} />
         <SettingRow
           icon="lock-outline"
-          label="Cambiar contraseña"
+          label={i18next.t("settings.cuenta.cont")}
           onPress={() => navigation.navigate('ChangePasswordScreen')}
         />
         <View style={styles.divider} />
         <SettingRow
           icon="translate"
-          label="Idioma"
-          onPress={() => alert('Próximamente')}
+          label={i18next.t("settings.cuenta.idioma")}
+          onPress={() => navigation.navigate('ChangeLanguageScreen')}
         />
       </View>
 
-      <SectionLabel title="NOTIFICACIONES" />
+      <SectionLabel title={i18next.t("settings.notificaciones.titulo")} />
       <View style={styles.group}>
         <SettingRow
           icon="bell-outline"
           iconColor="#F59E0B"
           iconBg="#2A1F0A"
-          label="Notificaciones push"
+          label={i18next.t("settings.notificaciones.push")}
           rightElement={toggle(notifPush, setNotifPush, 'notifPush')}
         />
         <View style={styles.divider} />
@@ -174,7 +175,7 @@ const SettingsScreen = () => {
           icon="ticket-outline"
           iconColor="#3B82F6"
           iconBg="#0A1A2A"
-          label="Tickets que coinciden"
+          label={i18next.t("settings.notificaciones.tickets")}
           rightElement={toggle(notifTickets, setNotifTickets, 'notifTickets')}
         />
         <View style={styles.divider} />
@@ -182,7 +183,7 @@ const SettingsScreen = () => {
           icon="medal-outline"
           iconColor="#A78BFA"
           iconBg="#1A0A2A"
-          label="Nuevas insignias"
+          label={i18next.t("settings.notificaciones.insignias")}
           rightElement={toggle(notifBadges, setNotifBadges, 'notifBadges')}
         />
         <View style={styles.divider} />
@@ -190,18 +191,18 @@ const SettingsScreen = () => {
           icon="message-outline"
           iconColor="#10B981"
           iconBg="#0A1F15"
-          label="Mensajes nuevos"
+          label={i18next.t("settings.notificaciones.mensajes")}
           rightElement={toggle(notifMessages, setNotifMessages, 'notifMessages')}
         />
       </View>
 
-      <SectionLabel title="LEGAL" />
+      <SectionLabel title={i18next.t("settings.legal.titulo")} />
       <View style={styles.group}>
         <SettingRow
           icon="file-document-outline"
           iconColor="#9CA3AF"
           iconBg="#1C1F2B"
-          label="Términos de Comunidad"
+          label={i18next.t("settings.legal.terminos")}
           onPress={() => navigation.navigate('TermsScreen')}
         />
         <View style={styles.divider} />
@@ -209,7 +210,7 @@ const SettingsScreen = () => {
           icon="shield-outline"
           iconColor="#9CA3AF"
           iconBg="#1C1F2B"
-          label="Políticas de privacidad"
+          label={i18next.t("settings.legal.politicas")}
           onPress={() => navigation.navigate('PrivacyScreen')}
         />
         <View style={styles.divider} />
@@ -217,7 +218,7 @@ const SettingsScreen = () => {
           icon="logout"
           iconColor="#EE951D"
           iconBg="#2a2809"
-          label="Cerrar sesión"
+          label={i18next.t("settings.cerrar")}
           labelStyle={styles.dangerLabel1}
           onPress={handleLogout}
           rightElement={<View />}
@@ -226,13 +227,13 @@ const SettingsScreen = () => {
 
 
       {/* ── CUENTA PELIGROSA ── */}
-      <SectionLabel title="CUENTA" />
+      <SectionLabel title={i18next.t("settings.eliminar.titulo")} />
       <View style={styles.group}>
         <SettingRow
           icon="delete-outline"
           iconColor="#F87171"
           iconBg="#2A0A0A"
-          label="Eliminar Cuenta"
+          label={i18next.t("settings.eliminar.eliminar")}
           labelStyle={styles.dangerLabel}
           onPress={handleDeleteAccount}
           rightElement={<View />}

@@ -4,6 +4,7 @@ import { collection, query, where, orderBy, or, and, doc, getDoc, onSnapshot } f
 import { auth, db } from '../../services/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import i18next from '../../services/staticTL';
 
 export default function MensajesScreen() {
   const navigation = useNavigation();
@@ -21,9 +22,9 @@ export default function MensajesScreen() {
     if (diffDias === 0 && now.getDate() === date.getDate()) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDias === 1 || (diffDias === 0 && now.getDate() !== date.getDate())) {
-      return 'Ayer';
+      return i18next.t("dias.ayer");
     } else if (diffDias < 7) {
-      const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const dias = [i18next.t("dias.dom"), i18next.t("dias.lun"), i18next.t("dias.mar"), i18next.t("dias.mie"), i18next.t("dias.jue"), i18next.t("dias.vie"), i18next.t("dias.sab")];
       return dias[date.getDay()];
     } else {
       return date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
@@ -111,7 +112,7 @@ export default function MensajesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mensajes</Text>
+        <Text style={styles.headerTitle}>{i18next.t("mensajes.titulo")}</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
           <Ionicons name="notifications" size={24} color="white" />
         </TouchableOpacity>
@@ -122,7 +123,7 @@ export default function MensajesScreen() {
         <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar"
+          placeholder={i18next.t("buscar")}
           placeholderTextColor="#888"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -132,7 +133,7 @@ export default function MensajesScreen() {
       {loading ? (
         <Text style={styles.infoText}>Cargando...</Text>
       ) : filteredConversaciones.length === 0 ? (
-        <Text style={styles.infoText}>No tienes conversaciones activas.</Text>
+        <Text style={styles.infoText}>{i18next.t("mensajes.vacio")}</Text>
       ) : (
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {filteredConversaciones.map((convo) => {
@@ -178,7 +179,7 @@ export default function MensajesScreen() {
 
                   {/* Título del problema */}
                   <Text style={styles.chatTitle} numberOfLines={1}>
-                    {convo.tituloProblema || 'Problema no especificado'}
+                    {convo.tituloProblema || i18next.t("mensajes.noEsp")}
                   </Text>
 
                   {/* Último mensaje — en blanco si hay no leídos */}

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert,
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth } from '../../services/firebaseConfig';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import i18next from '../../services/staticTL';
 
 // Password strength checker
 const getStrength = (pwd) => {
@@ -15,10 +16,10 @@ const getStrength = (pwd) => {
     special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd),
   };
   const passed = Object.values(checks).filter(Boolean).length;
-  if (passed <= 2) return { label: 'Débil', color: '#EF4444', width: '25%' };
-  if (passed <= 3) return { label: 'Regular', color: '#F59E0B', width: '55%' };
-  if (passed <= 4) return { label: 'Buena', color: '#3B82F6', width: '78%' };
-  return { label: 'Fuerte', color: '#10B981', width: '100%' };
+  if (passed <= 2) return { label: i18next.t("profile.edit.strength.debil"), color: '#EF4444', width: '25%' };
+  if (passed <= 3) return { label: i18next.t("profile.edit.strength.regular"), color: '#F59E0B', width: '55%' };
+  if (passed <= 4) return { label: i18next.t("profile.edit.strength.buena"), color: '#3B82F6', width: '78%' };
+  return { label: i18next.t("profile.edit.strength.fuerte"), color: '#10B981', width: '100%' };
 };
 
 // Reusable field
@@ -64,20 +65,20 @@ export default function ChangePasswordScreen({ navigation }) {
 
   const validate = () => {
     const e = {};
-    if (!current.trim()) e.current = 'Ingresa tu contraseña actual.';
+    if (!current.trim()) e.current = i18next.t('profile.edit.error.currentRequired');
 
     if (!next) {
-      e.next = 'Ingresa una nueva contraseña.';
+      e.next = i18next.t('profile.edit.error.newRequired');
     } else if (next.length < 8) {
-      e.next = 'Debe tener al menos 8 caracteres.';
+      e.next = i18next.t('profile.edit.error.minLength');
     } else if (!/[A-Z]/.test(next) || !/[a-z]/.test(next) || !/\d/.test(next) || !/[!@#$%^&*(),.?":{}|<>]/.test(next)) {
-      e.next = 'Debe incluir mayúscula, minúscula, número y un símbolo.';
+      e.next = i18next.t('profile.edit.error.requirements');
     }
 
     if (!confirm) {
-      e.confirm = 'Confirma tu nueva contraseña.';
+      e.confirm = i18next.t('profile.edit.error.confirmRequired');
     } else if (next !== confirm) {
-      e.confirm = 'Las contraseñas no coinciden.';
+      e.confirm = i18next.t('profile.edit.error.noMatch');
     }
 
     setErrors(e);
@@ -94,19 +95,19 @@ export default function ChangePasswordScreen({ navigation }) {
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, next);
 
-      Alert.alert('¡Contraseña actualizada!', 'Tu contraseña fue cambiada exitosamente.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert(i18next.t('profile.edit.successPasswordTitle'), i18next.t('profile.edit.successPasswordMessage'), [
+        { text: i18next.t('ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
       if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        setErrors({ current: 'La contraseña actual es incorrecta.' });
+        setErrors({ current: i18next.t('profile.edit.error.currentIncorrect') });
       } else if (error.code === 'auth/requires-recent-login') {
         Alert.alert(
-          'Sesión expirada',
-          'Por seguridad, vuelve a iniciar sesión e intenta de nuevo.'
+          i18next.t('profile.edit.error.sessionExpiredTitle'),
+          i18next.t('profile.edit.error.sessionExpiredMessage')
         );
       } else {
-        Alert.alert('Error', 'No se pudo cambiar la contraseña. Intenta de nuevo.');
+        Alert.alert(i18next.t('error.genericHeader'), i18next.t('profile.edit.error.generic')); 
         console.log(error);
       }
     } finally {
@@ -122,9 +123,9 @@ export default function ChangePasswordScreen({ navigation }) {
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="chevron-left" size={22} color="#9CA3AF" />
-          <Text style={styles.backText}>Regresar</Text>
+          <Text style={styles.backText}>{i18next.t("back")}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Cambiar contraseña</Text>
+        <Text style={styles.headerTitle}>{i18next.t("profile.edit.password")}</Text>
         <View style={{ width: 90 }} />
       </View>
 
@@ -134,12 +135,12 @@ export default function ChangePasswordScreen({ navigation }) {
         <View style={styles.infoCard}>
           <MaterialCommunityIcons name="shield-lock-outline" size={22} color="#4F46E5" />
           <Text style={styles.infoText}>
-            Para proteger tu cuenta, primero verifica tu contraseña actual.
+            {i18next.t("profile.edit.proteger")}
           </Text>
         </View>
 
         <PasswordField
-          label="CONTRASEÑA ACTUAL"
+          label={i18next.t("profile.edit.actual")}
           value={current}
           onChangeText={(t) => { setCurrent(t); setErrors({ ...errors, current: null }); }}
           visible={showCurrent}
@@ -151,12 +152,12 @@ export default function ChangePasswordScreen({ navigation }) {
         <View style={styles.divider} />
 
         <PasswordField
-          label="NUEVA CONTRASEÑA"
+          label={i18next.t("profile.edit.nueva")}
           value={next}
           onChangeText={(t) => { setNext(t); setErrors({ ...errors, next: null }); }}
           visible={showNext}
           onToggle={() => setShowNext(!showNext)}
-          placeholder="Mínimo 8 caracteres"
+          placeholder={i18next.t("profile.edit.minimo")}
           error={errors.next}
         />
 
@@ -174,11 +175,11 @@ export default function ChangePasswordScreen({ navigation }) {
         {next.length > 0 && (
           <View style={styles.requirements}>
             {[
-              { label: '8+ caracteres', ok: next.length >= 8 },
-              { label: 'Mayúscula', ok: /[A-Z]/.test(next) },
-              { label: 'Minúscula', ok: /[a-z]/.test(next) },
-              { label: 'Número', ok: /\d/.test(next) },
-              { label: 'Símbolo', ok: /[!@#$%^&*(),.?":{}|<>]/.test(next) },
+              { label: i18next.t("profile.edit.req.caracteres"), ok: next.length >= 8 },
+              { label: i18next.t("profile.edit.req.mayu"), ok: /[A-Z]/.test(next) },
+              { label: i18next.t("profile.edit.req.minu"), ok: /[a-z]/.test(next) },
+              { label: i18next.t("profile.edit.req.numero"), ok: /\d/.test(next) },
+              { label: i18next.t("profile.edit.req.simbolo"), ok: /[!@#$%^&*(),.?":{}|<>]/.test(next) },
             ].map(({ label, ok }) => (
               <View key={label} style={styles.reqItem}>
                 <MaterialCommunityIcons
@@ -193,18 +194,18 @@ export default function ChangePasswordScreen({ navigation }) {
         )}
 
         <PasswordField
-          label="CONFIRMAR NUEVA CONTRASEÑA"
+          label={i18next.t("profile.edit.confirmar")}
           value={confirm}
           onChangeText={(t) => { setConfirm(t); setErrors({ ...errors, confirm: null }); }}
           visible={showConfirm}
           onToggle={() => setShowConfirm(!showConfirm)}
-          placeholder="Repite la nueva contraseña"
+          placeholder={i18next.t("profile.edit.repite")}
           error={errors.confirm}
         />
 
         {confirm.length > 0 && (
           <Text style={[styles.matchText, { color: next === confirm ? '#10B981' : '#EF4444' }]}>
-            {next === confirm ? '✓ Las contraseñas coinciden' : '✗ No coinciden aún'}
+            {next === confirm ? i18next.t("profile.edit.coinciden") : i18next.t("profile.edit.noCoinciden")}
           </Text>
         )}
 
@@ -217,7 +218,7 @@ export default function ChangePasswordScreen({ navigation }) {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.saveBtnText}>Actualizar contraseña</Text>
+            <Text style={styles.saveBtnText}>{i18next.t("profile.edit.actualizar")}</Text>
           )}
         </TouchableOpacity>
 

@@ -19,27 +19,29 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 import { ALL_BADGES } from '../../utils/badges';
 
+import i18next from '../../services/staticTL';
+
 //Helpers
 
 const getLevelName = (level) => {
   const names = {
-    1: 'Principiante',
-    2: 'Aprendiz',
-    3: 'Colaborador',
-    4: 'Experto',
-    5: 'Mentor Avanzado',
-    6: 'Maestro',
-    7: 'Leyenda',
-    8: 'Ícono',
-    9: 'Deidad',
-    10: 'Eterno',
-    11: 'Inmortal',
-    12: 'Supremo',
-    13: 'Omnisciente',
-    14: 'Trascendental',
-    15: 'Divino',
+    1: i18next.t("profile.levelName.1"),
+    2: i18next.t("profile.levelName.2"),
+    3: i18next.t("profile.levelName.3"),
+    4: i18next.t("profile.levelName.4"),
+    5: i18next.t("profile.levelName.5"),
+    6: i18next.t("profile.levelName.6"),
+    7: i18next.t("profile.levelName.7"),
+    8: i18next.t("profile.levelName.8"),
+    9: i18next.t("profile.levelName.9"),
+    10: i18next.t("profile.levelName.10"),
+    11: i18next.t("profile.levelName.11"),
+    12: i18next.t("profile.levelName.12"),
+    13: i18next.t("profile.levelName.13"),
+    14: i18next.t("profile.levelName.14"),
+    15: i18next.t("profile.levelName.15"),
   };
-  return names[level] || `Nivel ${level}`;
+  return names[level] || `${i18next.t("profile.nivel")} ${level}`;
 };
 
 // Component
@@ -74,7 +76,8 @@ const ProfileScreen = () => {
     : '';
 
   // Mezcla ALL_BADGES con el estado earned/locked del usuario
-  const badgesWithStatus = ALL_BADGES.map((b) => ({
+  const badges = ALL_BADGES();
+  const badgesWithStatus = badges.map((b) => ({
     ...b,
     earned: earnedBadgeIds.includes(b.id),
   }));
@@ -110,8 +113,8 @@ const ProfileScreen = () => {
       const newLevel = Math.max(1, Math.floor((data.points || 0) / 100) + 1);
       if (previousLevel !== null && newLevel > previousLevel) {
         Alert.alert(
-          '¡Felicidades!',
-          `¡Has subido al nivel ${newLevel} - ${getLevelName(newLevel)}!`,
+          i18next.t("profile.newLevel.titulo"),
+          i18next.t("profile.newLevel.mensaje", {newLevel: newLevel, levelTitle: getLevelName(newLevel)}),
           [{ text: 'OK' }]
         );
       }
@@ -153,19 +156,19 @@ const ProfileScreen = () => {
       <View style={styles.infoContainer}>
         <Text style={styles.name}>{userName}</Text>
         <Text style={styles.subtitle}>
-          {carrera} · {semestre}° Semestre
+          {carrera} · {semestre}° {i18next.t("profile.semestre")}
         </Text>
-        <Text style={styles.subtitleDate}>Activo desde {formattedDate}</Text>
+        <Text style={styles.subtitleDate}>{i18next.t("profile.activeSince", {date: formattedDate})}</Text>
 
         <View style={styles.pointsRow}>
           <MaterialCommunityIcons name="lightning-bolt" size={26} color="#FACC15" />
           <Text style={styles.points}>{points}</Text>
-          <Text style={styles.pointsLabel}>Puntos</Text>
+          <Text style={styles.pointsLabel}>{i18next.t("profile.puntos")}</Text>
         </View>
 
         <View style={styles.levelBadge}>
           <MaterialCommunityIcons name="chevron-up" size={14} color="#A78BFA" style={{ marginRight: 2 }} />
-          <Text style={styles.levelText}>Nivel {level} - {levelName}</Text>
+          <Text style={styles.levelText}>{i18next.t("profile.nivel")} {level} - {levelName}</Text>
         </View>
 
         <View style={styles.progressBar}>
@@ -173,14 +176,14 @@ const ProfileScreen = () => {
         </View>
         <Text style={styles.progressText}>
           {progress === 0 && points !== 0
-            ? '¡Subiste de nivel!'
-            : `Faltan ${puntosRestantes} puntos para el siguiente nivel`}
+            ? i18next.t("profile.levelClimb")
+            : i18next.t("profile.faltan", {puntos: puntosRestantes})}
         </Text>
       </View>
 
       {/* HABILIDADES */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>HABILIDADES</Text>
+        <Text style={styles.sectionTitle}>{i18next.t("profile.habilidades")}</Text>
         <View style={styles.skillsList}>
           {habilidades.map((skill, i) => (
             <View key={i} style={styles.skillChip}>
@@ -192,19 +195,19 @@ const ProfileScreen = () => {
 
       {/* ESTADÍSTICAS */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Estadísticas</Text>
+        <Text style={styles.sectionTitle}>{i18next.t("profile.estadisticas.titulo")}</Text>
         <View style={styles.statsGrid}>
           <View style={styles.card}>
             <Text style={styles.cardNumber0}>{helpGiven}</Text>
-            <Text style={styles.cardLabel}>Ayudas dadas</Text>
+            <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.ayuda")}</Text>
           </View>
           <View style={styles.card}>
             <Text style={styles.cardNumber1}>{rated.toFixed(1)}</Text>
-            <Text style={styles.cardLabel}>Calificación</Text>
+            <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.calificacion")}</Text>
           </View>
           <View style={styles.card}>
             <Text style={styles.cardNumber2}>{helpAsked}</Text>
-            <Text style={styles.cardLabel}>Ayudas pedidas</Text>
+            <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.solicitudes")}</Text>
           </View>
         </View>
       </View>
@@ -214,7 +217,7 @@ const ProfileScreen = () => {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>INSIGNIAS</Text>
           <Text style={styles.badgeCount}>
-            {earnedBadgeIds.length}/{ALL_BADGES.length}
+            {earnedBadgeIds.length}/{badges.length}
           </Text>
         </View>
 
@@ -227,8 +230,8 @@ const ProfileScreen = () => {
                 Alert.alert(
                   badge.earned ? badge.label : `🔒 ${badge.label}`,
                   badge.earned
-                    ? `¡Insignia desbloqueada!\n${badge.desc}`
-                    : `Requisito: ${badge.desc}`
+                    ? `${i18next.t("badges.desbloq")}\n${badge.desc}`
+                    : `${i18next.t("badges.req")} ${badge.desc}`
                 )
               }
               activeOpacity={0.75}
@@ -243,13 +246,13 @@ const ProfileScreen = () => {
           ))}
         </View>
 
-        {ALL_BADGES.length > PREVIEW_COUNT && (
+        {badges.length > PREVIEW_COUNT && (
           <TouchableOpacity
             style={styles.verMasButton}
             onPress={() => setShowAllBadges(!showAllBadges)}
           >
             <Text style={styles.verMasText}>
-              {showAllBadges ? 'Ver menos' : 'Ver más'}
+              {showAllBadges ? i18next.t("profile.seeLess") : i18next.t("profile.seeMore")}
             </Text>
           </TouchableOpacity>
         )}

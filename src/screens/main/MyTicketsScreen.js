@@ -10,19 +10,30 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import i18next from '../../services/staticTL';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 
 // Convierte un timestamp de Firestore o Date a "hace X min / h / días"
-const tiempoRelativo = (fecha) => {
-  if (!fecha) return '';
-  const ms = fecha?.toDate ? fecha.toDate().getTime() : new Date(fecha).getTime();
-  const diff = Math.floor((Date.now() - ms) / 1000);
-  if (diff < 60) return 'hace un momento';
-  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
-  return `hace ${Math.floor(diff / 86400)} días`;
+const tiempoRelativo = (tiempo) => {
+  const actual = new Date().getTime();
+    const pasado = new Date(tiempo).getTime();
+    const difSegundos = Math.floor((actual - pasado) / 1000);
+
+    if (difSegundos < 60) return i18next.t("tiempo.segundos", {segundos: difSegundos});
+
+    const difMinutos = Math.floor(difSegundos / 60);
+
+    if (difMinutos < 60) return i18next.t("tiempo.minutos", {minutos: difMinutos});
+
+    const difHoras = Math.floor(difMinutos / 60);
+
+    if (difHoras < 24) return i18next.t("tiempo.horas", {horas: difHoras});
+
+    const difDias = Math.floor(difHoras / 24);
+
+    return i18next.t("tiempo.dias", {dias: difDias});
 };
 
 // Obtiene datos del usuario (nombre, carrera, semestre, rating, avatar) desde Firestore
@@ -261,8 +272,8 @@ export default function MyTicketsScreen() {
           titulo: data.titulo || 'Sin título',
           estado: data.estado,
           detalle: data.ayudante
-            ? `Ayudado por ${ayudanteInfo?.nombre || 'alguien'}`
-            : 'Sin voluntario asignado',
+            ? `${i18next.t("tickets.ayudaPor")} ${ayudanteInfo?.nombre || 'alguien'}`
+            : i18next.t("tickets.sinVol"),
           tiempo: tiempoRelativo(data.fechaActualizacion || data.fechaCreacion),
           valoracion,
         };
@@ -495,7 +506,7 @@ export default function MyTicketsScreen() {
       <View style={styles.statusContainer}>
         <View style={[styles.statusDot, { backgroundColor: isAsignada ? '#4ADE80' : '#FFD166' }]} />
         <Text style={[styles.statusText, { color: isAsignada ? '#4ADE80' : '#FFD166' }]}>
-          {isAsignada ? 'Asignada' : 'Sin voluntario aún'}
+          {isAsignada ? i18next.t("tickets.asignada") : i18next.t("tickets.sinVol")}
         </Text>
       </View>
     );
@@ -508,7 +519,7 @@ export default function MyTicketsScreen() {
       {solicitudes.length === 0 && !loading && (
         <View style={styles.emptyState}>
           <Ionicons name="receipt-outline" size={40} color="#2D3243" />
-          <Text style={styles.emptyStateText}>Aún no tienes solicitudes activas</Text>
+          <Text style={styles.emptyStateText}>{i18next.t("tickets.sinActivas")}</Text>
         </View>
       )}
 
@@ -518,7 +529,7 @@ export default function MyTicketsScreen() {
             <Text style={styles.cardTitle}>{ticket.titulo}</Text>
             <View style={styles.priorityMiniBadge}>
               <Text style={styles.priorityMiniText}>
-                {ticket.prioridad === 1 ? 'Alta' : ticket.prioridad === 2 ? 'Media' : 'Baja'}
+                {ticket.prioridad === 1 ? i18next.t("prioridad.alta") : ticket.prioridad === 2 ? i18next.t("prioridad.media") : i18next.t("prioridad.baja")}
               </Text>
             </View>
           </View>
@@ -571,13 +582,13 @@ export default function MyTicketsScreen() {
                   style={styles.actionBtnLeft}
                   onPress={() => navigation.navigate('EditarTicketScreen', { ticketData: ticket })}
                 >
-                  <Text style={styles.actionBtnTextBlue}>Ver y editar</Text>
+                  <Text style={styles.actionBtnTextBlue}>{i18next.t("tickets.editar")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionBtnRight}
                   onPress={() => { setSelectedTicket(ticket); setDeleteModalVisible(true); }}
                 >
-                  <Text style={styles.actionBtnTextRed}>Eliminar</Text>
+                  <Text style={styles.actionBtnTextRed}>{i18next.t("eliminar")}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -599,8 +610,8 @@ export default function MyTicketsScreen() {
 
       <TouchableOpacity style={styles.newTicketBtn} onPress={() => navigation.navigate('Agregar')}>
         <Text style={styles.newTicketText}>
-          ¿Necesitas más ayuda?{' '}
-          <Text style={{ color: '#6C63FF', fontWeight: 'bold' }}>Crear nuevo ticket</Text>
+          {i18next.t("tickets.masAyuda")}{' '}
+          <Text style={{ color: '#6C63FF', fontWeight: 'bold' }}>{i18next.t("tickets.nuevo")}</Text>
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -613,12 +624,12 @@ export default function MyTicketsScreen() {
       {ayudando.length === 0 && !loading && (
         <View style={styles.emptyState}>
           <Ionicons name="hand-left-outline" size={40} color="#2D3243" />
-          <Text style={styles.emptyStateText}>No estás ayudando a nadie en este momento</Text>
+          <Text style={styles.emptyStateText}>{i18next.t("tickets.sinAyudas")}</Text>
           <TouchableOpacity
             style={styles.emptyStateBtn}
             onPress={() => navigation.navigate('Explorar')}
           >
-            <Text style={styles.emptyStateBtnText}>Explorar tickets</Text>
+            <Text style={styles.emptyStateBtnText}>{i18next.t("tickets.explorar")}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -628,7 +639,7 @@ export default function MyTicketsScreen() {
           <View style={styles.cardMetaRowTop}>
             <View style={styles.priorityMiniBadge}>
               <Text style={styles.priorityMiniText}>
-                {ticket.prioridad === 1 ? 'Alta' : ticket.prioridad === 2 ? 'Media' : 'Baja'}
+                {ticket.prioridad === 1 ? i18next.t("prioridad.alta") : ticket.prioridad === 2 ? i18next.t("prioridad.media") : i18next.t("prioridad.baja")}
               </Text>
             </View>
             <Text style={styles.timeText}>{tiempoRelativo(ticket.fechaCreacion)}</Text>
@@ -647,12 +658,12 @@ export default function MyTicketsScreen() {
                 <Text style={styles.helperName}>{ticket.solicitanteInfo.nombre}</Text>
                 <Text style={styles.helperCareer}>
                   {ticket.solicitanteInfo.carrera
-                    ? `${ticket.solicitanteInfo.carrera}${ticket.solicitanteInfo.semestre ? ` · ${ticket.solicitanteInfo.semestre}° Semestre` : ''}`
+                    ? `${ticket.solicitanteInfo.carrera}${ticket.solicitanteInfo.semestre ? ` · ${ticket.solicitanteInfo.semestre}° ${i18next.t("profile.semestre")}` : ''}`
                     : 'Solicitante'}
                 </Text>
               </View>
               <View style={styles.helperRight}>
-                <Text style={styles.enChatText}>• En chat</Text>
+                <Text style={styles.enChatText}>• {i18next.t("tickets.enChat")}</Text>
                 {ticket.solicitanteInfo.rating != null && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                     <Ionicons name="star" size={12} color="#FFD166" />
@@ -673,13 +684,13 @@ export default function MyTicketsScreen() {
 
           <View style={styles.actionButtonsRow}>
             <TouchableOpacity style={styles.actionBtnLeft} onPress={() => irAlChat(ticket)}>
-              <Text style={styles.actionBtnTextGreen}>Ir al chat</Text>
+              <Text style={styles.actionBtnTextGreen}>{i18next.t("tickets.irChat")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionBtnRight}
               onPress={() => { setSelectedTicket(ticket); setAbandonModalVisible(true); }}
             >
-              <Text style={styles.actionBtnTextRed}>Abandonar</Text>
+              <Text style={styles.actionBtnTextRed}>{i18next.t("tickets.abandonar")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -732,7 +743,7 @@ export default function MyTicketsScreen() {
         {historial.length === 0 && !loading && (
           <View style={styles.emptyState}>
             <Ionicons name="time-outline" size={40} color="#2D3243" />
-            <Text style={styles.emptyStateText}>Tu historial aparecerá aquí</Text>
+            <Text style={styles.emptyStateText}>{i18next.t("tickets.tuHistorial")}</Text>
           </View>
         )}
 
@@ -753,7 +764,7 @@ export default function MyTicketsScreen() {
                         color="#5E6376"
                       />
                       <Text style={styles.historyTypeText}>
-                        {item.tipo === 'ayude' ? 'Ayudé' : 'Solicité'}
+                        {item.tipo === 'ayude' ? i18next.t("tickets.ayude") : i18next.t("tickets.solicite")}
                       </Text>
                     </View>
 
@@ -778,7 +789,7 @@ export default function MyTicketsScreen() {
                       >
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                           <Ionicons name="star" size={14} color="#FFD166" />
-                          <Text style={styles.valoracionText}>Ver valoración recibida</Text>
+                          <Text style={styles.valoracionText}>{i18next.t("tickets.valoracion")}</Text>
                         </View>
                       </TouchableOpacity>
                     )}
@@ -801,18 +812,18 @@ export default function MyTicketsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Mis Tickets</Text>
-          <Text style={styles.headerSubtitle}>Gestiona tus solicitudes y ayudas</Text>
+          <Text style={styles.headerTitle}>{i18next.t("tickets.titulo")}</Text>
+          <Text style={styles.headerSubtitle}>{i18next.t("tickets.gestiona")}</Text>
         </View>
         <View style={styles.activosBadge}>
           <Text style={styles.activosTextNum}>{ticketsActivos}</Text>
-          <Text style={styles.activosTextStr}>activos</Text>
+          <Text style={styles.activosTextStr}>{i18next.t("tickets.activos")}</Text>
         </View>
       </View>
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
-        {['Solicité', 'Ayudando', 'Historial'].map((tab, index) => (
+        {[i18next.t("tickets.solicite"), i18next.t("tickets.ayudando"), i18next.t("tickets.historial")].map((tab, index) => (
           <TouchableOpacity
             key={index}
             style={[styles.tabButton, activeTab === index && styles.tabButtonActive]}
@@ -833,7 +844,7 @@ export default function MyTicketsScreen() {
       {/* Contenido deslizable */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.infoText}>Cargando...</Text>
+          <Text style={styles.infoText}>{i18next.t("loading")}</Text>
         </View>
       ) : (
         <ScrollView
@@ -860,7 +871,7 @@ export default function MyTicketsScreen() {
             <Ionicons name="warning" size={36} color="#FFD166" style={{ alignSelf: 'center', marginBottom: 12 }} />
             <Text style={styles.modalTitleCenter}>¿Eliminar solicitud?</Text>
             <Text style={styles.modalSubtitleCenter}>
-              Esta acción es permanente y no se puede deshacer.
+              {i18next.t("tickets.permanente")}
             </Text>
             
             <View style={styles.modalBtnRow}>
@@ -869,7 +880,7 @@ export default function MyTicketsScreen() {
                 style={[styles.modalBtnBase, styles.modalBtnDestructive]} 
                 onPress={confirmarEliminacion}
               >
-                <Text style={[styles.modalBtnText, { color: '#FF4D4D' }]}>Sí, eliminar</Text>
+                <Text style={[styles.modalBtnText, { color: '#FF4D4D' }]}>{i18next.t("tickets.eliminar")}</Text>
               </TouchableOpacity>
 
               {/* Botón Cancelar */}
@@ -877,7 +888,7 @@ export default function MyTicketsScreen() {
                 style={[styles.modalBtnBase, styles.modalBtnDefault]} 
                 onPress={() => setDeleteModalVisible(false)}
               >
-                <Text style={[styles.modalBtnText, { color: '#FFF' }]}>Cancelar</Text>
+                <Text style={[styles.modalBtnText, { color: '#FFF' }]}>{i18next.t("cancelar")}</Text>
               </TouchableOpacity>
 
             </View>

@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
+import i18next from '../../services/staticTL';
 
 export default function TicketScreen({ route }) {
   const navigation = useNavigation();
@@ -19,11 +20,11 @@ export default function TicketScreen({ route }) {
   const [reportDetails, setReportDetails] = useState('');
 
   const reportReasons = [
-    { id: 1, icon: '🔞', label: 'Contenido inapropiado o adulto' },
-    { id: 2, icon: '💰', label: 'Solicita dinero o cobro por la ayuda' },
-    { id: 3, icon: '😡', label: 'Lenguaje ofensivo o acoso' },
-    { id: 4, icon: '🤖', label: 'Spam o contenido falso' },
-    { id: 5, icon: '⚠️', label: 'Otro motivo' },
+    { id: 1, icon: '🔞', label: i18next.t("reporte.contenido") },
+    { id: 2, icon: '💰', label: i18next.t("reporte.solicita") },
+    { id: 3, icon: '😡', label: i18next.t("reporte.lenguaje") },
+    { id: 4, icon: '🤖', label: i18next.t("reporte.spam") },
+    { id: 5, icon: '⚠️', label: i18next.t("reporte.otro") },
   ];
 
 
@@ -50,10 +51,10 @@ export default function TicketScreen({ route }) {
 
   const getPriorityStyle = (priority) => {
     switch (priority) {
-      case 1: return { text: 'Alta', color: '#FF4D4D', bg: 'rgba(255, 77, 77, 0.1)' };
-      case 2: return { text: 'Media', color: '#FFD166', bg: 'rgba(255, 209, 102, 0.1)' };
-      case 3: return { text: 'Baja', color: '#4ADE80', bg: 'rgba(74, 222, 128, 0.1)' };
-      default: return { text: 'Normal', color: '#888', bg: '#222' };
+      case 1: return { text: i18next.t("prioridad.alta"), color: '#FF4D4D', bg: 'rgba(255, 77, 77, 0.1)' };
+      case 2: return { text: i18next.t("prioridad.media"), color: '#FFD166', bg: 'rgba(255, 209, 102, 0.1)' };
+      case 3: return { text: i18next.t("prioridad.baja"), color: '#4ADE80', bg: 'rgba(74, 222, 128, 0.1)' };
+      default: return { text: i18next.t('prioridad.normal'), color: '#888', bg: '#222' };
     }
   };
 
@@ -61,12 +62,12 @@ export default function TicketScreen({ route }) {
 
   const enviarReporte = () => {
     if (!selectedReason) {
-      Alert.alert("Atención", "Por favor selecciona un motivo de reporte.");
+      Alert.alert(i18next.t("error.atencion"), i18next.t("error.reporte"));
       return;
     }
     // Aqui puedes agregar la lógica para guardar el reporte en Firebase
-    console.log("Reportando:", selectedReason, reportDetails);
-    Alert.alert("Reporte enviado", "Hemos recibido tu reporte y lo revisaremos pronto.");
+    console.log(i18next.t("error.reportando"), selectedReason, reportDetails);
+    Alert.alert(i18next.t("error.envio"), i18next.t("error.recibido"));
     setModalVisible(false);
     setSelectedReason(null);
     setReportDetails('');
@@ -146,7 +147,7 @@ export default function TicketScreen({ route }) {
 
     } catch (error) {
       console.log("Error en Firebase:", error);
-      Alert.alert("Error", error.message || String(error));
+      Alert.alert(i18next.t('error.genericHeader'), error.message || String(error));
     }
   }
 
@@ -163,17 +164,17 @@ export default function TicketScreen({ route }) {
           <View style={styles.backButtonIcon}>
             <Ionicons name="arrow-back" size={20} color="#878FA9" />
           </View>
-          <Text style={styles.backButtonText}>Regresar al feed</Text>
+          <Text style={styles.backButtonText}>{i18next.t("back")}</Text>
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.actionPillBlue}>
             <Ionicons name="globe-outline" size={14} color="#3B82F6" />
-            <Text style={styles.actionPillTextBlue}>Traducir</Text>
+            <Text style={styles.actionPillTextBlue}>{i18next.t("traducir")}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionPillRed} onPress={() => setModalVisible(true)}>
             <Ionicons name="flag" size={14} color="#FF4D4D" />
-            <Text style={styles.actionPillTextRed}>Reportar</Text>
+            <Text style={styles.actionPillTextRed}>{i18next.t("reportar")}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -182,7 +183,7 @@ export default function TicketScreen({ route }) {
         {/* PREMURA / PRIORIDAD */}
         <View style={[styles.priorityBadge, { backgroundColor: priorityData.bg }]}>
           <Text style={[styles.priorityText, { color: priorityData.color }]}>
-            Premura: {priorityData.text}
+            {priorityData.text}
           </Text>
         </View>
 
@@ -198,18 +199,18 @@ export default function TicketScreen({ route }) {
 
           <View style={styles.userInfo}>
             <Text style={styles.userName}>
-              {loadingUser ? 'Cargando...' : (creator?.nombre || 'Usuario Desconocido')}
+              {loadingUser ? i18next.t("loading") : (creator?.nombre || i18next.t("desconocido"))}
             </Text>
 
             <Text style={styles.userCareer}>
-              {creator?.carrera || 'Estudiante'} 
-              {creator?.semestre ? ` - ${creator.semestre}° Semestre` : ''}
+              {creator?.carrera || i18next.t('profile.student')} 
+              {creator?.semestre ? ` - ${creator.semestre}° ${i18next.t("profile.semestre")}` : ''}
             </Text>
 
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={14} color="#FFD166" />
               <Text style={styles.ratingText}>
-                {creator?.calificacion || '4.0'} como tutor
+                {creator?.calificacion || '4.0'} {i18next.t("tutor")}
               </Text>
             </View>
           </View>
@@ -238,7 +239,7 @@ export default function TicketScreen({ route }) {
             style={styles.supportButton}
             onPress={crearConversacion}
           >
-            <Text style={styles.supportButtonText}>¡Yo te apoyo!</Text>
+            <Text style={styles.supportButtonText}>{i18next.t("tickets.apoyo")}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -261,9 +262,9 @@ export default function TicketScreen({ route }) {
 
             <View style={styles.modalHeader}>
               <Ionicons name="flag" size={32} color="#FF4D4D" style={{ marginBottom: 10 }} />
-              <Text style={styles.modalTitle}>Reportar ticket</Text>
+              <Text style={styles.modalTitle}>{i18next.t("reportar")}</Text>
               <Text style={styles.modalSubtitle}>
-                ¿Por qué consideras que este ticket no es apropiado?
+                {i18next.t("tickets.reporte")}
               </Text>
             </View>
 
@@ -285,7 +286,7 @@ export default function TicketScreen({ route }) {
 
               <TextInput
                 style={styles.reportInput}
-                placeholder="Describe lo que ocurrió..."
+                placeholder={i18next.t("tickets.reporteDesc")}
                 placeholderTextColor="#7E8494"
                 multiline={true}
                 numberOfLines={3}
@@ -296,11 +297,11 @@ export default function TicketScreen({ route }) {
             </ScrollView>
 
             <TouchableOpacity style={styles.submitReportBtn} onPress={enviarReporte}>
-              <Text style={styles.submitReportBtnText}>Enviar reporte</Text>
+              <Text style={styles.submitReportBtnText}>{i18next.t("enviarReporte")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.cancelReportBtn} onPress={() => setModalVisible(false)}>
-              <Text style={styles.cancelReportBtnText}>Cancelar</Text>
+              <Text style={styles.cancelReportBtnText}>{i18next.t("cancelar")}</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>

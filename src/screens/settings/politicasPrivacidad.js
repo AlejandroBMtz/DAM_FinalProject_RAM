@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import i18next from '../../services/staticTL';
 
 export default function PrivacyScreen({ navigation }) {
     return (
@@ -12,7 +13,7 @@ export default function PrivacyScreen({ navigation }) {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                     <Ionicons name="arrow-back" size={24} color="#FFF" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Política de Privacidad</Text>
+                <Text style={styles.title}>{i18next.t("settings.legal.politicas")}</Text>
             </View>
 
             <ScrollView

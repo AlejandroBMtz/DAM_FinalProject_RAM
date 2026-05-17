@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import Onboarding from 'react-native-onboarding-swiper';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import i18next from '../../services/staticTL';
 
 const TutorialButton = ({ label, ...props }) => (
   <TouchableOpacity style={styles.footerButton} activeOpacity={0.8} {...props}>
@@ -38,9 +39,9 @@ export default function TutorialScreen({ onDone }) {
       onSkip={onDone}
       onDone={onDone}
       bottomBarHighlight={false}
-      SkipButtonComponent={(props) => <TutorialButton {...props} label="Saltar" />}
-      NextButtonComponent={(props) => <TutorialButton {...props} label="Siguiente" />}
-      DoneButtonComponent={(props) => <TutorialButton {...props} label="Listo" />}
+      SkipButtonComponent={(props) => <TutorialButton {...props} label={i18next.t('tutorial.skip')} />}
+      NextButtonComponent={(props) => <TutorialButton {...props} label={i18next.t('tutorial.next')} />}
+      DoneButtonComponent={(props) => <TutorialButton {...props} label={i18next.t('tutorial.done')} />}
       pageBackgroundColor="#0B0D14"
       imageContainerStyles={styles.imageContainer}
       containerStyles={styles.container}
@@ -50,8 +51,8 @@ export default function TutorialScreen({ onDone }) {
           image: (
             <SlideCard
               iconName="rocket-outline"
-              title="Bienvenido a RAM"
-              subtitle="Aprende rápido cómo crear, gestionar y revisar tus tickets."
+              title={i18next.t('tutorial.welcomeTitle')}
+              subtitle={i18next.t('tutorial.welcomeSubtitle')}
             />
           ),
           title: '',
@@ -62,8 +63,8 @@ export default function TutorialScreen({ onDone }) {
           image: (
             <SlideCard
               iconName="chatbubble-ellipses-outline"
-              title="Mensajes y notificaciones"
-              subtitle="Recibe actualizaciones en tiempo real y responde desde la app."
+              title={i18next.t('tutorial.messagesTitle')}
+              subtitle={i18next.t('tutorial.messagesSubtitle')}
             />
           ),
           title: '',
@@ -74,8 +75,8 @@ export default function TutorialScreen({ onDone }) {
           image: (
             <SlideCard
               iconName="document-text-outline"
-              title="Crea tickets fácilmente"
-              subtitle="Selecciona un tipo, agrega descripción y envía tu ticket en segundos."
+              title={i18next.t('tutorial.createTitle')}
+              subtitle={i18next.t('tutorial.createSubtitle')}
             />
           ),
           title: '',
@@ -86,8 +87,8 @@ export default function TutorialScreen({ onDone }) {
           image: (
             <SlideCard
               iconName="person-circle-outline"
-              title="Perfil y ajustes"
-              subtitle="Edita tu cuenta, cambia contraseña y configura tus preferencias."
+              title={i18next.t('tutorial.profileTitle')}
+              subtitle={i18next.t('tutorial.profileSubtitle')}
             />
           ),
           title: '',
