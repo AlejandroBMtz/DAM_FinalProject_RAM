@@ -6,6 +6,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../services/firebaseConfig';
+import i18next from '../services/staticTL';
+import { initializeAppLanguage } from '../services/startup';
 
 // imports de expo  
 import * as Device from 'expo-device';
@@ -34,6 +36,8 @@ export default function AppNavigator() {
   const [loading, setLoading] = useState(true);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialLoaded, setTutorialLoaded] = useState(false);
+  const [languageLoaded, setLanguageLoaded] = useState(false);
+  const [navKey, setNavKey] = useState(i18next.language || 'es');
   const tutorialLoadedForRef = useRef(null);
   const notificationListener = useRef();
   const responseListener = useRef();
@@ -100,6 +104,8 @@ export default function AppNavigator() {
       setUser(authenticatedUser);
       setLoading(false);
 
+      loadLanguage(authenticatedUser);
+
       if (authenticatedUser) {
         registerForPushNotificationsAsync(authenticatedUser.uid);
       }
@@ -128,6 +134,28 @@ export default function AppNavigator() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      setNavKey(i18next.language || 'es');
+    };
+
+    i18next.on('languageChanged', handleLanguageChange);
+    return () => {
+      i18next.off('languageChanged', handleLanguageChange);
+    };
+  }, []);
+
+  const loadLanguage = async (authenticatedUser) => {
+    setLanguageLoaded(false);
+    try {
+      await initializeAppLanguage(authenticatedUser);
+    } catch (error) {
+      console.log('Error loading language:', error);
+    } finally {
+      setLanguageLoaded(true);
+    }
+  };
+
   const handleTutorialDone = async () => {
     try {
       const key = user ? userTutorialKey(user.uid) : GUEST_TUTORIAL_KEY;
@@ -138,7 +166,7 @@ export default function AppNavigator() {
     }
   };
 
-  if (loading || !tutorialLoaded) {
+  if (loading || !tutorialLoaded || !languageLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B0D14' }}>
         <ActivityIndicator size="large" color="#2563EB" />
@@ -148,7 +176,7 @@ export default function AppNavigator() {
 
   if (showTutorial) {
     return (
-      <NavigationContainer>
+      <NavigationContainer key={navKey}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Tutorial">
             {(props) => <TutorialScreen {...props} onDone={handleTutorialDone} />}
@@ -159,7 +187,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer key={navKey}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <Stack.Screen name="Main" component={MainNavigator} />
