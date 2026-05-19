@@ -69,7 +69,6 @@ const ProfileScreen = () => {
   const level = Math.max(1, Math.floor(points / 100) + 1);
   const progress = points % 100;
   const puntosRestantes = progress === 0 ? 100 : 100 - progress;
-  const levelName = getLevelName(level);
 
   const formattedDate = fechaRegistro
     ? new Date(fechaRegistro).toLocaleDateString('es-ES')
@@ -138,7 +137,7 @@ const ProfileScreen = () => {
           style={styles.settingsFloating}
           onPress={() => navigation.navigate('SettingsScreen')}
         >
-          <MaterialCommunityIcons name="cog" size={22} color="#fff" />
+          <MaterialCommunityIcons name="cog" size={22} color="#F5F3FF" />
         </TouchableOpacity>
 
         <View style={styles.avatarWrapper}>
@@ -168,7 +167,7 @@ const ProfileScreen = () => {
 
         <View style={styles.levelBadge}>
           <MaterialCommunityIcons name="chevron-up" size={14} color="#A78BFA" style={{ marginRight: 2 }} />
-          <Text style={styles.levelText}>{i18next.t("profile.nivel")} {level} - {levelName}</Text>
+          <Text style={styles.levelText}>{i18next.t("profile.nivel")} {level}</Text>
         </View>
 
         <View style={styles.progressBar}>
@@ -187,8 +186,17 @@ const ProfileScreen = () => {
         <View style={styles.skillsList}>
           {habilidades.map((skill, i) => (
             <View key={i} style={styles.skillChip}>
-              <Text style={styles.skillText}>{skill}</Text>
-            </View>
+              <MaterialCommunityIcons
+              name="lightning-bolt"
+              size={14}
+              color="#818CF8"
+              style={{ marginRight: 6 }}
+            />
+
+            <Text style={styles.skillText}>
+              {skill}
+            </Text>
+          </View>
           ))}
         </View>
       </View>
@@ -198,14 +206,43 @@ const ProfileScreen = () => {
         <Text style={styles.sectionTitle}>{i18next.t("profile.estadisticas.titulo")}</Text>
         <View style={styles.statsGrid}>
           <View style={styles.card}>
-            <Text style={styles.cardNumber0}>{helpGiven}</Text>
-            <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.ayuda")}</Text>
-          </View>
+      <MaterialCommunityIcons
+        name="hand-heart"
+        size={20}
+        color="#22C55E"
+        style={{ marginBottom: 6 }}
+      />
+      <Text style={styles.cardNumber0}>
+        {helpGiven}
+      </Text>
+
+      <Text style={styles.cardLabel}>
+        {i18next.t("profile.estadisticas.ayuda")}
+      </Text>
+    </View>
           <View style={styles.card}>
-            <Text style={styles.cardNumber1}>{rated.toFixed(1)}</Text>
-            <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.calificacion")}</Text>
-          </View>
+      <MaterialCommunityIcons
+        name="star"
+        size={20}
+        color="#F59E0B"
+        style={{ marginBottom: 6 }}
+      />
+
+      <Text style={styles.cardNumber1}>
+        {rated.toFixed(1)}
+      </Text>
+
+      <Text style={styles.cardLabel}>
+        {i18next.t("profile.estadisticas.calificacion")}
+      </Text>
+    </View>
           <View style={styles.card}>
+            <MaterialCommunityIcons
+              name="message-text"
+              size={20}
+              color="#3B82F6"
+              style={{ marginBottom: 6 }}
+            />
             <Text style={styles.cardNumber2}>{helpAsked}</Text>
             <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.solicitudes")}</Text>
           </View>
@@ -278,13 +315,41 @@ const styles = StyleSheet.create({
   },
 
   settingsFloating: {
-    position: 'absolute',
-    top: 52,
-    right: 16,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    padding: 8,
-    borderRadius: 10,
+  position: 'absolute',
+  top: 52,
+  right: 16,
+
+  width: 48,
+  height: 48,
+
+  justifyContent: 'center',
+  alignItems: 'center',
+
+  backgroundColor: '#7C6CF6',
+
+  borderRadius: 14,
+
+  borderWidth: 1.8,
+  borderColor: '#D4D1FF',
+
+  // Glow principal
+  shadowColor: '#8B7CFF',
+  shadowOffset: {
+    width: 0,
+    height: 0,
   },
+  shadowOpacity: 0.9,
+  shadowRadius: 12,
+
+  // Glow secundario
+  elevation: 12,
+
+  // efecto cristal/neon
+  shadowSpread: 0,
+
+  // borde interno visual
+  overflow: 'visible',
+},
 
   avatarWrapper: {
     position: 'absolute',
@@ -427,138 +492,266 @@ const styles = StyleSheet.create({
   },
 
   skillsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  marginTop: 4,
+},
 
-  skillChip: {
-    borderWidth: 1.5,
-    borderColor: '#6366F1',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-    backgroundColor: 'rgba(99,102,241,0.08)',
-  },
+skillChip: {
+  flexDirection: 'row',
+  alignItems: 'center',
 
-  skillText: {
-    color: '#818CF8',
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  paddingHorizontal: 16,
+  paddingVertical: 10,
 
+  marginRight: 10,
+  marginBottom: 10,
+
+  borderRadius: 16,
+
+  backgroundColor: '#111827',
+
+  borderWidth: 1,
+  borderColor: 'rgba(129, 140, 248, 0.35)',
+
+  // Glow elegante
+  shadowColor: '#6366F1',
+  shadowOffset: {
+    width: 0,
+    height: 0,
+  },
+  shadowOpacity: 0.45,
+  shadowRadius: 8,
+
+  elevation: 6,
+},
+
+skillText: {
+  color: '#E0E7FF',
+
+  fontSize: 13,
+  fontWeight: '700',
+
+  letterSpacing: 0.4,
+
+  textTransform: 'uppercase',
+},
   statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 4,
+},
 
-  card: {
-    backgroundColor: '#111827',
-    padding: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 4,
-  },
+card: {
+  flex: 1,
 
-  cardNumber0: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#22C55E'
-  },
-  cardNumber1: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#F59E0B'
-  },
-  cardNumber2: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#3B82F6'
-  },
+  backgroundColor: '#111827',
 
-  cardLabel: {
-    color: '#6B7280',
-    fontSize: 11,
-    marginTop: 4,
-    textAlign: 'center',
+  paddingVertical: 18,
+  paddingHorizontal: 12,
+
+  borderRadius: 18,
+
+  alignItems: 'center',
+  justifyContent: 'center',
+
+  marginHorizontal: 5,
+
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.06)',
+
+  // profundidad
+  shadowColor: '#000',
+  shadowOffset: {
+    width: 0,
+    height: 4,
   },
+  shadowOpacity: 0.35,
+  shadowRadius: 10,
+
+  elevation: 8,
+},
+
+cardNumber0: {
+  fontSize: 30,
+  fontWeight: '900',
+  color: '#22C55E',
+
+  textShadowColor: 'rgba(34,197,94,0.7)',
+  textShadowOffset: {
+    width: 0,
+    height: 0,
+  },
+  textShadowRadius: 12,
+
+  letterSpacing: -1,
+},
+
+cardNumber1: {
+  fontSize: 30,
+  fontWeight: '900',
+  color: '#F59E0B',
+
+  textShadowColor: 'rgba(245,158,11,0.7)',
+  textShadowOffset: {
+    width: 0,
+    height: 0,
+  },
+  textShadowRadius: 12,
+
+  letterSpacing: -1,
+},
+
+cardNumber2: {
+  fontSize: 30,
+  fontWeight: '900',
+  color: '#3B82F6',
+
+  textShadowColor: 'rgba(59,130,246,0.7)',
+  textShadowOffset: {
+    width: 0,
+    height: 0,
+  },
+  textShadowRadius: 12,
+
+  letterSpacing: -1,
+},
+
+cardLabel: {
+  color: '#9CA3AF',
+
+  fontSize: 10,
+  fontWeight: '600',
+
+  marginTop: 8,
+
+  textAlign: 'center',
+
+  letterSpacing: 0.8,
+
+  textTransform: 'uppercase',
+},
 
   // Badges grid
   badgesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  justifyContent: 'space-between',
+  marginTop: 6,
+},
 
-  badgeCard: {
-    backgroundColor: '#111827',
-    borderRadius: 14,
-    width: '30%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
+badgeCard: {
+  width: '31%',
+  aspectRatio: 1,
 
-  badgeCardLocked: {
-    backgroundColor: '#0D111A',
-    opacity: 0.5,
-  },
+  borderRadius: 20,
 
-  badgeEmoji: {
-    fontSize: 30,
-  },
+  alignItems: 'center',
+  justifyContent: 'center',
 
-  badgeEmojiLocked: {
-    fontSize: 26,
-    opacity: 0.4,
-  },
+  marginBottom: 14,
 
-  badgeLabel: {
-    color: '#9CA3AF',
-    fontSize: 11,
-    marginTop: 6,
-    textAlign: 'center',
-    paddingHorizontal: 4,
-  },
+  padding: 10,
 
-  badgeLabelLocked: {
-    color: '#4B5563',
-  },
+  backgroundColor: '#131A2A',
 
-  verMasButton: {
-    alignSelf: 'center',
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: '#374151',
-    borderRadius: 20,
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-  },
+  borderWidth: 1,
+  borderColor: 'rgba(139, 92, 246, 0.25)',
 
-  verMasText: {
-    color: '#9CA3AF',
-    fontSize: 13,
+  // profundidad
+  shadowColor: '#8B5CF6',
+  shadowOffset: {
+    width: 0,
+    height: 0,
   },
+  shadowOpacity: 0.35,
+  shadowRadius: 12,
 
-  logoutButton: {
-    marginTop: 28,
-    marginHorizontal: 20,
-    backgroundColor: '#1F0A0A',
-    borderWidth: 1,
-    borderColor: '#7F1D1D',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
+  elevation: 10,
+},
 
-  logoutText: {
-    color: '#F87171',
-    fontWeight: '700',
-    fontSize: 14,
+badgeCardLocked: {
+  backgroundColor: '#0B1120',
+  borderColor: 'rgba(255,255,255,0.04)',
+  opacity: 0.45,
+
+  shadowOpacity: 0,
+  elevation: 0,
+},
+
+badgeEmoji: {
+  fontSize: 34,
+
+  textShadowColor: 'rgba(139,92,246,0.8)',
+  textShadowOffset: {
+    width: 0,
+    height: 0,
   },
+  textShadowRadius: 16,
+},
+
+badgeEmojiLocked: {
+  fontSize: 28,
+  opacity: 0.35,
+},
+
+badgeLabel: {
+  color: '#E5E7EB',
+
+  fontSize: 10,
+  fontWeight: '700',
+
+  marginTop: 10,
+
+  textAlign: 'center',
+
+  paddingHorizontal: 4,
+
+  textTransform: 'uppercase',
+
+  letterSpacing: 0.8,
+},
+
+badgeLabelLocked: {
+  color: '#4B5563',
+},
+
+verMasButton: {
+  alignSelf: 'center',
+
+  marginTop: 10,
+
+  backgroundColor: '#151C2C',
+
+  borderWidth: 1,
+  borderColor: 'rgba(139,92,246,0.25)',
+
+  borderRadius: 999,
+
+  paddingHorizontal: 24,
+  paddingVertical: 10,
+
+  shadowColor: '#8B5CF6',
+  shadowOffset: {
+    width: 0,
+    height: 0,
+  },
+  shadowOpacity: 0.25,
+  shadowRadius: 10,
+
+  elevation: 6,
+},
+
+verMasText: {
+  color: '#C4B5FD',
+
+  fontSize: 12,
+  fontWeight: '700',
+
+  letterSpacing: 1,
+
+  textTransform: 'uppercase',
+},
 });
 
 export default ProfileScreen;
