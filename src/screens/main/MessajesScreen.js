@@ -42,12 +42,17 @@ export default function MensajesScreen() {
       if (userSnap.exists()) {
         const data = userSnap.data();
         // El campo correcto en Firestore es fotoPerfil
-        return { nombre: data.nombre || '', fotoPerfil: data.fotoPerfil || null };
+        return {
+          nombre: data.nombre || '',
+          fotoPerfil: data.fotoPerfil || null,
+          online: data.online || false,
+          lastActive: data.lastActive || null,
+        };
       }
     } catch (error) {
       console.log('Error al obtener info del usuario:', error);
     }
-    return { nombre: '', fotoPerfil: null };
+    return { nombre: '', fotoPerfil: null, online: false, lastActive: null };
   };
 
   const obtenerConversaciones = () => {
@@ -72,16 +77,22 @@ export default function MensajesScreen() {
         const results = await Promise.all(querySnapshot.docs.map(async (docSnap) => {
           const data = docSnap.data();
           const userInfo = await getUserData(data.solicitante, data.ayudante);
+          const otherUid = data.solicitante === userUid ? data.ayudante : data.solicitante;
+          const typingKey = `typing_${otherUid}`;
 
           // Leer el campo de no leídos correspondiente al usuario actual.
           // Se guarda como noLeidos_<uid> para diferenciar por participante.
           const noLeidosKey = `noLeidos_${userUid}`;
           const noLeidos = data[noLeidosKey] || 0;
+          const typing = !!data[typingKey];
 
           return {
             id: docSnap.id,
             nombre: userInfo.nombre,
             fotoPerfil: userInfo.fotoPerfil,
+            online: userInfo.online,
+            lastActive: userInfo.lastActive,
+            typing,
             noLeidos,
             ...data,
           };
@@ -138,6 +149,7 @@ export default function MensajesScreen() {
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {filteredConversaciones.map((convo) => {
             const tieneNoLeidos = convo.noLeidos > 0;
+            const previewText = convo.typing ? i18next.t('mensajes.typing') : (convo.ultimoMensaje || '');
 
             return (
               <TouchableOpacity
@@ -158,10 +170,12 @@ export default function MensajesScreen() {
 
                 <View style={styles.chatInfoContainer}>
                   <View style={styles.chatHeaderRow}>
-                    {/* Nombre en blanco brillante si hay no leídos */}
-                    <Text style={[styles.chatName, tieneNoLeidos && styles.chatNameUnread]}>
-                      {convo.nombre || 'Usuario'}
-                    </Text>
+                    <View style={styles.chatNameRow}>
+                      <Text style={[styles.chatName, tieneNoLeidos && styles.chatNameUnread]}>
+                        {convo.nombre || 'Usuario'}
+                      </Text>
+                      {convo.online && <View style={styles.onlineDot} />}
+                    </View>
                     <View style={styles.chatMetaRight}>
                       <Text style={[styles.chatTime, tieneNoLeidos && styles.chatTimeUnread]}>
                         {formatTime(convo.ultimaActividad)}
@@ -182,12 +196,15 @@ export default function MensajesScreen() {
                     {convo.tituloProblema || i18next.t("mensajes.noEsp")}
                   </Text>
 
-                  {/* Último mensaje — en blanco si hay no leídos */}
                   <Text
-                    style={[styles.chatMessage, tieneNoLeidos && styles.chatMessageUnread]}
+                    style={[
+                      styles.chatMessage,
+                      tieneNoLeidos && styles.chatMessageUnread,
+                      convo.typing && styles.chatTypingMessage,
+                    ]}
                     numberOfLines={1}
                   >
-                    {convo.ultimoMensaje || ''}
+                    {previewText}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -269,6 +286,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 2,
   },
+  chatNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  onlineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#4ADE80',
+    borderWidth: 1,
+    borderColor: '#0B0D14',
+  },
   chatName: {
     color: '#9CA3AF',
     fontSize: 16,
@@ -315,6 +346,10 @@ const styles = StyleSheet.create({
   chatMessage: {
     color: '#5E6376',
     fontSize: 14,
+  },
+  chatTypingMessage: {
+    color: '#60A5FA',
+    fontStyle: 'italic',
   },
   chatMessageUnread: {
     color: '#D1D5DB',

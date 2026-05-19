@@ -452,6 +452,8 @@ i18next.init({
           califica: "¡Califica el apoyo!",
           enviar: "Enviar y finalizar",
           place: "Escribe un mensaje...",
+          online: "En línea",
+          typing: "Escribiendo...",
         },
         profile: {
           newLevel: {
