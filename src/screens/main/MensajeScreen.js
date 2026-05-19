@@ -60,7 +60,98 @@ export default function MensajeScreen() {
   const conversacionData = route.params?.conversacionData;
   const title = route.params?.nombre || conversacionData?.nombre || 'Usuario';
   const fotoUrl = conversacionData?.fotoPerfil || conversacionData?.fotoUrl;
-  const esAyudante = conversacionData?.ayudante === auth.currentUser?.uid;
+  const currentUid = auth.currentUser?.uid;
+  const otherUid = conversacionData?.solicitante === currentUid ? conversacionData?.ayudante : conversacionData?.solicitante;
+  const typingKey = `typing_${currentUid}`;
+  const otherTypingKey = `typing_${otherUid}`;
+  const esAyudante = conversacionData?.ayudante === currentUid;
+
+  const [otherTyping, setOtherTyping] = useState(false);
+  const [otherOnline, setOtherOnline] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
+
+  const setTypingStatus = useCallback(async (value) => {
+    if (!conversacionData?.id || !currentUid) return;
+    try {
+      await updateDoc(doc(db, 'conversaciones', conversacionData.id), {
+        [typingKey]: value,
+      });
+    } catch (error) {
+      console.log('Error actualizando typing status:', error);
+    }
+  }, [conversacionData?.id, currentUid, typingKey]);
+
+  const getMessageStatusIcon = (status) => {
+    const normalized = status || 'sent';
+    if (normalized === 'read') {
+      return { name: 'checkmark-done-circle', color: '#4ADE80' };
+    }
+    if (normalized === 'delivered') {
+      return { name: 'checkmark-done', color: '#A78BFA' };
+    }
+    return { name: 'ellipse-outline', color: '#9CA3AF' };
+  };
+
+  const markIncomingMessagesDelivered = async (messages) => {
+    if (!messages?.length) return;
+    try {
+      await Promise.all(messages.map((msg) =>
+        updateDoc(doc(db, 'mensajes', msg.id), { status: 'delivered' })
+      ));
+    } catch (error) {
+      console.log('Error marcando mensajes como entregados:', error);
+    }
+  };
+
+  const markIncomingMessagesRead = async (messages) => {
+    if (!messages?.length) return;
+    try {
+      await Promise.all(messages.map((msg) =>
+        updateDoc(doc(db, 'mensajes', msg.id), { status: 'read' })
+      ));
+    } catch (error) {
+      console.log('Error marcando mensajes como leídos:', error);
+    }
+  };
+
+  const handleTypingChange = (text) => {
+    setMessage(text);
+    if (!conversacionData?.id || !currentUid) return;
+
+    if (text.trim().length === 0) {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (isTyping) {
+        setIsTyping(false);
+        setTypingStatus(false);
+      }
+      return;
+    }
+
+    if (!isTyping) {
+      setIsTyping(true);
+      setTypingStatus(true);
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      setTypingStatus(false);
+    }, 1500);
+  };
+
+  const clearTypingStatus = useCallback(async () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    setIsTyping(false);
+    await setTypingStatus(false);
+  }, [setTypingStatus]);
 
   const toggleTag = (tag) => {
     if (selectedTags.includes(tag)) {
@@ -85,8 +176,40 @@ export default function MensajeScreen() {
   useFocusEffect(
     useCallback(() => {
       marcarComoLeido();
-    }, [marcarComoLeido])
+      return () => {
+        clearTypingStatus();
+      };
+    }, [marcarComoLeido, clearTypingStatus])
   );
+
+  useEffect(() => {
+    if (!conversacionData?.id || !otherUid) return;
+    const convoRef = doc(db, 'conversaciones', conversacionData.id);
+    const unsubscribe = onSnapshot(convoRef, (snapshot) => {
+      const data = snapshot.data();
+      setOtherTyping(!!data?.[otherTypingKey]);
+    });
+    return () => unsubscribe();
+  }, [conversacionData?.id, otherUid, otherTypingKey]);
+
+  useEffect(() => {
+    if (!otherUid) return;
+    const userRef = doc(db, 'users', otherUid);
+    const unsubscribe = onSnapshot(userRef, (snapshot) => {
+      const data = snapshot.data();
+      setOtherOnline(!!data?.online);
+    });
+    return () => unsubscribe();
+  }, [otherUid]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      clearTypingStatus();
+    };
+  }, [conversacionData?.id, currentUid]);
 
   const performTermination = async () => {
     const convoUid = conversacionData?.id;
@@ -142,6 +265,7 @@ export default function MensajeScreen() {
         idUsuario: auth.currentUser.uid,
         texto: message,
         tiempoEnviado: new Date().toISOString(),
+        status: 'sent',
       });
       const currentUid = auth.currentUser.uid;
       const otherUid = conversacionData.solicitante === currentUid ? conversacionData.ayudante : conversacionData.solicitante;
@@ -151,6 +275,7 @@ export default function MensajeScreen() {
         ultimaActividad: new Date().toISOString(),
         [noLeidosKey]: increment(1),
       });
+      await setTypingStatus(false);
     } catch (error) {
       console.log('Error en Firebase:', error);
     } finally {
@@ -178,13 +303,15 @@ export default function MensajeScreen() {
         idUsuario: currentUid,
         tipo: 'imagen',
         imageUrl,
-        tiempoEnviado: new Date().toISOString()
+        tiempoEnviado: new Date().toISOString(),
+        status: 'sent',
       });
       await updateDoc(doc(db, 'conversaciones', convoUid), {
         ultimoMensaje: '📷 Foto',
         ultimaActividad: new Date().toISOString(),
         [`noLeidos_${otherUid}`]: increment(1)
       });
+      await setTypingStatus(false);
     } catch (error) {
       Alert.alert('Error', 'No se pudo enviar la imagen.');
     } finally {
@@ -222,14 +349,31 @@ export default function MensajeScreen() {
 
   useEffect(() => {
     const convoUid = conversacionData?.id;
-    if (!convoUid) return;
+    if (!convoUid || !currentUid) return;
     const q = query(collection(db, 'mensajes'), where('idConversacion', '==', convoUid), orderBy('tiempoEnviado'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      setMensajes(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    const unsub = onSnapshot(q, async (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setMensajes(docs);
       setLoading(false);
+
+      const incomingSent = docs.filter((msg) => msg.idUsuario !== currentUid && msg.status === 'sent');
+      const incomingDelivered = docs.filter((msg) => msg.idUsuario !== currentUid && msg.status === 'delivered');
+
+      if (incomingSent.length > 0) {
+        await markIncomingMessagesDelivered(incomingSent);
+      }
+
+      if (incomingSent.length > 0 || incomingDelivered.length > 0) {
+        setTimeout(() => {
+          const incomingToRead = docs.filter((msg) => msg.idUsuario !== currentUid && ['sent', 'delivered'].includes(msg.status));
+          if (incomingToRead.length > 0) {
+            markIncomingMessagesRead(incomingToRead);
+          }
+        }, 1200);
+      }
     });
     return () => unsub();
-  }, []);
+  }, [conversacionData?.id, currentUid]);
 
   useEffect(() => {
     if (mensajes.length > 0) {
@@ -252,6 +396,11 @@ export default function MensajeScreen() {
         />
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+          {otherTyping ? (
+            <Text style={styles.statusText}>{i18next.t('mensajes.typing') || 'Escribiendo...'}</Text>
+          ) : otherOnline ? (
+            <Text style={styles.statusText}>{i18next.t('mensajes.online') || 'En línea'}</Text>
+          ) : null}
         </View>
         <TouchableOpacity 
           style={styles.terminarBtn} 
@@ -273,23 +422,32 @@ export default function MensajeScreen() {
           showsVerticalScrollIndicator={false} 
           keyboardShouldPersistTaps="handled"
         >
-          {mensajes.map((msg) => (
-            <View 
-              key={msg.id} 
-              style={[
-                styles.cuerpoMensaje, 
-                msg.idUsuario === auth.currentUser.uid ? styles.cuerpoEnviado : styles.cuerpoRecibido
-              ]}
-            >
-              {msg.tipo === 'imagen' ? (
-                <TouchableOpacity onPress={() => setImagenVisor(msg.imageUrl)} activeOpacity={0.9}>
-                  <Image source={{ uri: msg.imageUrl }} style={styles.imagenMensaje} resizeMode="cover" />
-                </TouchableOpacity>
-              ) : (
-                <Text style={styles.textoMensaje}>{msg.texto}</Text>
-              )}
-            </View>
-          ))}
+          {mensajes.map((msg) => {
+            const isMine = msg.idUsuario === currentUid;
+            const statusIcon = getMessageStatusIcon(msg.status);
+            return (
+              <View 
+                key={msg.id} 
+                style={[
+                  styles.cuerpoMensaje, 
+                  isMine ? styles.cuerpoEnviado : styles.cuerpoRecibido
+                ]}
+              >
+                {msg.tipo === 'imagen' ? (
+                  <TouchableOpacity onPress={() => setImagenVisor(msg.imageUrl)} activeOpacity={0.9}>
+                    <Image source={{ uri: msg.imageUrl }} style={styles.imagenMensaje} resizeMode="cover" />
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.textoMensaje}>{msg.texto}</Text>
+                )}
+                {isMine && (
+                  <View style={styles.messageStatus}>
+                    <Ionicons name={statusIcon.name} size={14} color={statusIcon.color} />
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </ScrollView>
       </ImageBackground>
 
@@ -302,7 +460,7 @@ export default function MensajeScreen() {
         <TextInput 
           style={styles.textInput} 
           value={message} 
-          onChangeText={setMessage} 
+          onChangeText={handleTypingChange} 
           placeholder={i18next.t("mensajes.place")}
           placeholderTextColor="#8A8F9E" 
           multiline 
@@ -460,6 +618,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  statusText: {
+    color: '#A5B4FC',
+    fontSize: 12,
+    marginTop: 4,
+  },
   terminarBtn: {
     backgroundColor: '#1E3A8A',
     paddingHorizontal: 12,
@@ -512,6 +675,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     lineHeight: 22,
+  },
+  messageStatus: {
+    alignSelf: 'flex-end',
+    marginTop: 6,
   },
   inputRow: {
     flexDirection: 'row',

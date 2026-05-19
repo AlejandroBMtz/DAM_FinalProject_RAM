@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ActivityIndicator, Platform } from 'react-native';
+import { View, ActivityIndicator, Platform, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -41,6 +41,7 @@ export default function AppNavigator() {
   const tutorialLoadedForRef = useRef(null);
   const notificationListener = useRef();
   const responseListener = useRef();
+  const activeUserRef = useRef(null);
 
   // obtener token 
   const registerForPushNotificationsAsync = async (uid) => {
@@ -83,6 +84,46 @@ export default function AppNavigator() {
 
     return token;
   };
+
+  const updatePresenceForUid = async (uid, isOnline) => {
+    if (!uid) return;
+    try {
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, {
+        online: isOnline,
+        lastActive: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.log('Error actualizando presencia:', error);
+    }
+  };
+
+  useEffect(() => {
+    activeUserRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      updatePresenceForUid(user.uid, true);
+    }
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      const activeUser = activeUserRef.current;
+      if (!activeUser?.uid) return;
+      if (nextAppState === 'active') {
+        updatePresenceForUid(activeUser.uid, true);
+      } else if (nextAppState.match(/inactive|background/)) {
+        updatePresenceForUid(activeUser.uid, false);
+      }
+    });
+
+    return () => {
+      if (activeUserRef.current?.uid) {
+        updatePresenceForUid(activeUserRef.current.uid, false);
+      }
+      subscription.remove();
+    };
+  }, [user]);
 
   useEffect(() => {
     const loadTutorialState = async (authenticatedUser) => {
