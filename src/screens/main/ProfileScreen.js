@@ -21,6 +21,8 @@ import { ALL_BADGES } from '../../utils/badges';
 
 import i18next from '../../services/staticTL';
 
+import { getSkillByName } from '../../utils/tagsList';
+
 //Helpers
 
 const getLevelName = (level) => {
@@ -194,7 +196,7 @@ const ProfileScreen = () => {
             />
 
             <Text style={styles.skillText}>
-              {skill}
+              {getSkillByName(skill)}
             </Text>
           </View>
           ))}

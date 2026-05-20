@@ -16,8 +16,7 @@ import { collection, query, where, getDocs, orderBy, doc, getDoc, onSnapshot } f
 import { auth, db } from '../../services/firebaseConfig';
 import i18next from '../../services/staticTL';
 
-
-const AVAILABLE_TAGS = ['Todas', 'Python', 'Programación', 'Matemáticas', 'Estructura de Datos', 'React Native'];
+import { getAllSkillNames, normalizeSkillName } from '../../utils/tagsList';
 
 export default function FeedScreen() {
   const navigation = useNavigation();
@@ -26,6 +25,9 @@ export default function FeedScreen() {
   const [tickets, setTickets] = useState([]);
   const [userTags, setUserTags] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Generate available tags dynamically (Todas + all skills)
+  const AVAILABLE_TAGS = ['Todas', ...getAllSkillNames()];
 
   const fetchUserTags = async () => {
     if (!auth.currentUser) {
@@ -84,7 +86,10 @@ export default function FeedScreen() {
     if (!Array.isArray(ticket.etiquetas) || ticket.etiquetas.length === 0) {
       return 0;
     }
-    return ticket.etiquetas.filter((tag) => userTags.includes(tag)).length;
+    // Normalize ticket tags before comparing with user tags
+    return ticket.etiquetas.filter((tag) => 
+      userTags.includes(normalizeSkillName(tag))
+    ).length;
   };
 
   const ticketRelevanceComparator = (a, b) => {
@@ -142,7 +147,8 @@ export default function FeedScreen() {
 
       const matchesTag =
         selectedTag === 'Todas' ||
-        (Array.isArray(ticket.etiquetas) && ticket.etiquetas.includes(selectedTag));
+        (Array.isArray(ticket.etiquetas) && 
+         ticket.etiquetas.some(tag => normalizeSkillName(tag) === selectedTag));
 
       return matchesSearch && matchesTag;
     })
@@ -191,14 +197,17 @@ export default function FeedScreen() {
       <Text style={styles.cardDescription} numberOfLines={2}>{item.desc}</Text>
       
       <View style={styles.tagsContainer}>
-        {item.etiquetas.map((tag, index) => (
-          <View key={index} style={styles.cardTag}>
-            <Text style={[
-              styles.cardTagText,
-              (userTags.includes(tag)) ? styles.tagTextSelected : styles.tagTextUnselected
-              ]}>{tag}</Text>
-          </View>
-        ))}
+        {item.etiquetas.map((tag, index) => {
+          const normalizedTag = normalizeSkillName(tag);
+          return (
+            <View key={index} style={styles.cardTag}>
+              <Text style={[
+                styles.cardTagText,
+                (userTags.includes(normalizedTag)) ? styles.tagTextSelected : styles.tagTextUnselected
+              ]}>{normalizedTag}</Text>
+            </View>
+          );
+        })}
       </View>
     </TouchableOpacity>
   );

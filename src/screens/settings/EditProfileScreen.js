@@ -6,6 +6,7 @@ import { auth, db } from '../../services/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
 import i18next from '../../services/staticTL';
+import { getAllSkillNames } from '../../utils/tagsList';
 
 const CARRERAS = [
   'Licenciatura en Informática',
@@ -18,13 +19,6 @@ const CARRERAS = [
 ];
 
 const SEMESTRES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-
-const HABILIDADES = [
-  'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño',
-  'JavaScript', 'Algoritmos', 'React Native', 'Node.js',
-  'UX/UI', 'Figma', 'Recursión', 'Java', 'Express',
-  'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave',
-];
 
 export default function EditProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -230,7 +224,7 @@ export default function EditProfileScreen({ navigation }) {
           <Text style={styles.fieldLabel}>{i18next.t("profile.edit.habilidades")}</Text>
           <Text style={styles.fieldHint}>{i18next.t("profile.edit.selecciona")}</Text>
           <View style={styles.tagsGrid}>
-            {HABILIDADES.map((skill) => {
+            {getAllSkillNames().map((skill) => {
               const active = habilidades.includes(skill);
               return (
                 <TouchableOpacity

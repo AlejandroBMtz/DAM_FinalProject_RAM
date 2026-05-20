@@ -6,6 +6,7 @@ import { doc, getDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
 import i18next from '../../services/staticTL';
+import { normalizeSkillName } from '../../utils/tagsList';
 
 export default function TicketScreen({ route }) {
   const navigation = useNavigation();
@@ -225,7 +226,7 @@ export default function TicketScreen({ route }) {
         <View style={styles.tagsContainer}>
           {ticketData?.etiquetas?.map((tag, index) => (
             <View key={index} style={styles.tagPill}>
-              <Text style={styles.tagText}>{tag}</Text>
+              <Text style={styles.tagText}>{normalizeSkillName(tag)}</Text>
             </View>
           ))}
         </View>
