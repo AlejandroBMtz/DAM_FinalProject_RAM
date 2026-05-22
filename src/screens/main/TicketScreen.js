@@ -18,7 +18,10 @@ export default function TicketScreen({ route }) {
   // Estados para el Modal de Reporte
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
-  const [reportDetails, setReportDetails] = useState('');
+  const [reportDetails, setReportDetails] = useState("");
+
+  const [titulo, setTitulo] = useState(ticketData?.titulo ? ticketData?.titulo : "");
+  const [desc, setDesc] = useState(ticketData?.desc ? ticketData?.desc : "");
 
   const reportReasons = [
     { id: 1, icon: '🔞', label: i18next.t("reporte.contenido") },
@@ -49,6 +52,33 @@ export default function TicketScreen({ route }) {
     };
     fetchUser();
   }, [ticketData]);
+
+  const translateText = async () => {
+
+    let langpair = '';
+
+    if (i18next.language == 'en') {
+      langpair = 'es|en';
+    } else {
+      langpair = 'en|es';
+    }
+
+    try {
+      const responseTitulo = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(titulo)}&langpair=${encodeURIComponent(langpair)}`
+      );
+      const dataTitulo = await responseTitulo.json();
+      setTitulo(dataTitulo.responseData.translatedText);
+
+      const responseDesc = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(desc)}&langpair=${encodeURIComponent(langpair)}`
+      );
+      const dataDesc = await responseDesc.json();
+      setDesc(dataDesc.responseData.translatedText);
+    } catch(e) {
+      console.log(e);
+    }
+  };
 
   const getPriorityStyle = (priority) => {
     switch (priority) {
@@ -169,7 +199,7 @@ export default function TicketScreen({ route }) {
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.actionPillBlue}>
+          <TouchableOpacity style={styles.actionPillBlue} onPress={() => translateText()}>
             <Ionicons name="globe-outline" size={14} color="#3B82F6" />
             <Text style={styles.actionPillTextBlue}>{i18next.t("traducir")}</Text>
           </TouchableOpacity>
@@ -189,7 +219,7 @@ export default function TicketScreen({ route }) {
         </View>
 
         {/* TÍTULO */}
-        <Text style={styles.title}>{ticketData?.titulo}</Text>
+        <Text style={styles.title}>{titulo}</Text>
 
         {/* TARJETA DE USUARIO */}
         <View style={styles.userCard}>
@@ -219,7 +249,7 @@ export default function TicketScreen({ route }) {
 
         {/* DESCRIPCIÓN */}
         <Text style={styles.descriptionText}>
-          {ticketData?.desc}
+          {desc}
         </Text>
 
         {/* ETIQUETAS */}
