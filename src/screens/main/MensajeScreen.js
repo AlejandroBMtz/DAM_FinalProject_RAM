@@ -290,7 +290,8 @@ export default function MensajeScreen() {
         setModalVisible(false);
         setPuntosModalVisible(true);
       } else {
-        navigation.navigate('Tickets');
+        setModalVisible(false);
+        navigation.popToTop();
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo finalizar correctamente.');

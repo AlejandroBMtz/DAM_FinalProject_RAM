@@ -136,9 +136,13 @@ export default function TicketScreen({ route }) {
         tituloProblema: ticketData.titulo,
         nombre: creator?.nombre || 'Usuario', // Nombre de quien recibe la ayuda
         estado: 'activa',
+        solicitante: ticketData.usuario,
+        ayudante: auth.currentUser.uid,
+        fotoPerfil: creator?.fotoPerfil || null,
       };
 
-      await evaluateBadges(); // ← evalúa fast_reply u otras al aceptar un ticket
+      await evaluateBadges(); // ← evalua fast_reply u otras al aceptar un ticket
+      navigation.popToTop();
 
       navigation.navigate('Mensajes', {
         screen: 'MensajeScreen',
