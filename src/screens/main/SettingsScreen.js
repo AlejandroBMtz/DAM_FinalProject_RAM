@@ -214,7 +214,14 @@ const SettingsScreen = () => {
           onPress={() => navigation.navigate('PrivacyScreen')}
         />
         <View style={styles.divider} />
-        <SettingRow
+       
+      </View>
+
+
+      {/* ── CUENTA PELIGROSA ── */}
+      <SectionLabel title={i18next.t("settings.eliminar.titulo")} />
+      <View style={styles.group}>
+         <SettingRow
           icon="logout"
           iconColor="#EE951D"
           iconBg="#2a2809"
@@ -223,12 +230,6 @@ const SettingsScreen = () => {
           onPress={handleLogout}
           rightElement={<View />}
         />
-      </View>
-
-
-      {/* ── CUENTA PELIGROSA ── */}
-      <SectionLabel title={i18next.t("settings.eliminar.titulo")} />
-      <View style={styles.group}>
         <SettingRow
           icon="delete-outline"
           iconColor="#F87171"

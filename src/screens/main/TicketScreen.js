@@ -141,7 +141,7 @@ export default function TicketScreen({ route }) {
         fotoPerfil: creator?.fotoPerfil || null,
       };
 
-      await evaluateBadges(); // ← evalua fast_reply u otras al aceptar un ticket
+      await evaluateBadges(); //  evalua fast_reply u otras al aceptar un ticket
       navigation.popToTop();
 
       navigation.navigate('Mensajes', {
