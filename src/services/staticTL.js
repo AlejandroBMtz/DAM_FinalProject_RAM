@@ -209,6 +209,15 @@ i18next.init({
           eliminar: "Delete account",
           eliminarConfirmacion: "This action is irreversible. Are you sure you want to delete your account?",
           student: "Student",
+          carrera: {
+            li: 'Computer Science',
+            lati: 'IT Administration',
+            sof: 'Software Engineering',
+            ic: 'Computer Engineering',
+            itr: 'Telecommunication and Networks Engineering',
+            cad: 'Data Science and Analytics Engineering',
+            itic: 'IT and Cybersecurity Engineering',
+          }
         },
         home: {
           filtro: 'Filter your search',
@@ -579,6 +588,15 @@ i18next.init({
           eliminar: "Eliminar cuenta",
           eliminarConfirmacion: "Esta acción es irreversible. ¿Seguro que deseas eliminar tu cuenta?",
           student: "Estudiante",
+          carrera: {
+            li: 'Licenciatura en Informática',
+            lati: 'Licenciatura en Administración de las TI',
+            sof: 'Ingeniería de Software',
+            ic: 'Ingeniería en Computación',
+            itr: 'Ingeniería en Telecomunicaciones y Redes',
+            cad: 'Ingeniería en Ciencia y Analítica de Datos',
+            itic: 'Ingeniería en Tecnologías de Información y Ciberseguridad',
+          }
         },
         home: {
           filtro: 'Filtrar búsqueda',
