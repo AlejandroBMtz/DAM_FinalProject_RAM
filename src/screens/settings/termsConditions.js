@@ -23,18 +23,45 @@ export default function TermsScreen({ navigation }) {
                 <View style={styles.card}>
                     <Text style={styles.lastUpdate}>Última actualización: 12 de Mayo, 2026</Text>
 
-                    <Text style={styles.sectionTitle}>1. Aceptación de términos</Text>
+                    <Text style={styles.sectionTitle}>1. Aceptación de los Términos</Text>
                     <Text style={styles.text}>
-                        Al utilizar StudentBank, aceptas cumplir con nuestras normas de comunidad. Esta plataforma está diseñada exclusivamente para el apoyo académico entre estudiantes de la UAQ...
+                        Al descargar, instalar, registrarte o utilizar la aplicación RAM, aceptas expresamente cumplir y estar sujeto a los presentes Términos y Condiciones de Uso, así como a todas las leyes y regulaciones aplicables. Si no estás de acuerdo con alguno de estos términos, debes abstenerte inmediatamente de usar e interactuar con este servicio.
                     </Text>
 
-                    <Text style={styles.sectionTitle}>2. Uso del Servicio</Text>
+                    <Text style={styles.sectionTitle}>2. Elegibilidad y Uso de la Plataforma</Text>
                     <Text style={styles.text}>
-                        Los usuarios se comprometen a no solicitar remuneración económica externa. El sistema de puntos es la única moneda válida dentro de la aplicación...
+                        Esta plataforma está diseñada y restringida exclusivamente para el uso de la comunidad estudiantil activa de la Universidad Autónoma de Querétaro (UAQ). El registro requiere obligatoriamente una cuenta de correo institucional válida. El usuario se compromete a proporcionar información verídica y a mantener la confidencialidad de sus datos de acceso. RAM se reserva el derecho de suspender o eliminar cualquier cuenta que se sospeche falsa o que pertenezca a un individuo ajeno a la institución.
+                    </Text>
+
+                    <Text style={styles.sectionTitle}>3. Prohibición de Transacciones Monetarias Externas</Text>
+                    <Text style={styles.text}>
+                        RAM es un entorno sin fines de lucro enfocado puramente en el apoyo académico. Los usuarios se comprometen de forma estricta a no solicitar, ofrecer, ni exigir remuneraciones económicas reales, transferencias monetarias o pagos externos de cualquier índole por las asesorías o la ayuda brindada. El sistema interno de puntos de la aplicación es la única "moneda" válida, simbólica y legítima para realizar interacciones o intercambios de asesorías dentro del ecosistema de la app.
+                    </Text>
+
+                    <Text style={styles.sectionTitle}>4. Exclusión Absoluta de Responsabilidad (Deslinde Legal)</Text>
+                    <Text style={styles.text}>
+                        RAM funciona como un mero canal de intermediación técnica entre estudiantes y no asume ninguna responsabilidad respecto a las interacciones humanas derivadas del uso del software.
+                    </Text>
+                    <Text style={[styles.text, { marginTop: 8 }]}>
+                        • Contenido y Calidad Académica: No somos responsables de la veracidad, exactitud, calidad o utilidad del material de estudio, explicaciones o asesorías brindadas por los usuarios. El éxito o fracaso escolar derivado de la ayuda recibida es entera responsabilidad del estudiante.
+                    </Text>
+                    <Text style={[styles.text, { marginTop: 8 }]}>
+                        • Conducta e Interacciones: No nos hacemos responsables bajo ninguna circunstancia de la conducta, mensajes, comportamiento o acciones de los usuarios, ya sea dentro de la aplicación o en encuentros físicos y presenciales fuera de ella. Cualquier agresión, fraude, acoso o actividad ilícita deberá ser reportada a las autoridades universitarias y legales competentes, eximiendo por completo a los desarrolladores de RAM de cualquier litigio.
+                    </Text>
+                    <Text style={[styles.text, { marginTop: 8 }]}>
+                        • Fallas del Sistema: La aplicación se proporciona "tal cual" ("as is"). No garantizamos que el servicio funcione de manera ininterrumpida, libre de errores informáticos, bugs o caídas del servidor de Firebase, ni nos responsabilizamos por pérdidas de datos, puntos internos o progreso dentro de la app por fallas técnicas.
+                    </Text>
+
+                    <Text style={styles.sectionTitle}>5. Propiedad Intelectual y Normas Comunitarias</Text>
+                    <Text style={styles.text}>
+                        Queda terminantemente prohibido publicar material ofensivo, difamatorio, con derechos de autor de terceros sin autorización, o contenido inapropiado que viole la legislación vigente o el reglamento interno de la UAQ. Los administradores de RAM se reservan la facultad absoluta de moderar contenidos, penalizar conductas indebidas y cancelar de forma definitiva el acceso a usuarios que infrinjan los valores comunitarios de respeto mutuo y honestidad académica.
                     </Text>
 
                     <View style={styles.divider} />
 
+                    <Text style={styles.footerNote}>
+                        El uso inadecuado de RAM o el incumplimiento de estos términos podrá resultar en la baja inmediata de la cuenta y, de ser necesario, en el reporte correspondiente ante las autoridades universitarias de la UAQ.
+                    </Text>
                 </View>
             </ScrollView>
         </SafeAreaView>
