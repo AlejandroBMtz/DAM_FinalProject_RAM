@@ -335,7 +335,15 @@ i18next.init({
         },
         notif: {
           titulo: "Notifications",
-          sinNotif: "You don't have any notifications yet."
+          sinNotif: "You don't have any notifications yet.",
+          mensaje: {
+            titulo: "Someone wants to help you! 🚀",
+            desc: "Your request has been taken: \"{{ticket}}\""
+          },
+          match: {
+            titulo: "A request that matches your skills",
+            desc: "Someone needs help with: {{tags}}"
+          }
         },
         skills: {
           programming: 'Programming',
@@ -697,7 +705,15 @@ i18next.init({
         },
         notif: {
           titulo: "Notificaciones",
-          sinNotif: "No tines notificaciones aún."
+          sinNotif: "No tines notificaciones aún.",
+          mensaje: {
+            titulo: "¡Alguien quiere ayudarte! 🚀",
+            desc: "Han aceptado tu ticket: \"{{ticket}}\""
+          },
+          match: {
+            titulo: "Ticket que coincide con tus habilidades",
+            desc: "Alguien necesita ayuda con: {{tags}}"
+          }
         },
         skills: {
           programming: 'Programación',

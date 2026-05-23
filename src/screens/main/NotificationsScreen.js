@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import i18next from '../../services/staticTL';
+import { getSkillByName } from '../../utils/tagsList';
 
 export default function NotificationsScreen() {
   const navigation = useNavigation();
@@ -62,6 +63,13 @@ export default function NotificationsScreen() {
     }
   };
 
+  const tagsString = (skills) => {
+    const translatedSkills = skills.map(function (skill) {
+      return getSkillByName(skill);
+    })
+    return translatedSkills.join(', ');
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -92,6 +100,12 @@ export default function NotificationsScreen() {
         >
           {notificaciones.map((notif) => {
             const { Icono, name, color } = getIconConfig(notif.tipo);
+            const isMensaje = notif.tipo === 'mensaje';
+            const title = isMensaje ? i18next.t('notif.mensaje.titulo') : i18next.t('notif.match.titulo');
+            const description = isMensaje
+              ? i18next.t('notif.mensaje.desc', { ticket: notif.ticket ? notif.ticket : '' })
+              : i18next.t('notif.match.desc', { tags: notif.tags ? tagsString(notif.tags) : '' });
+
             return (
               <View key={notif.id}>
                 <TouchableOpacity
@@ -103,8 +117,8 @@ export default function NotificationsScreen() {
                     <Icono name={name} size={24} color={color} />
                   </View>
                   <View style={styles.textContainer}>
-                    <Text style={styles.itemTitle}>{notif.titulo}</Text>
-                    <Text style={styles.itemDescription} numberOfLines={2}>{notif.descripcion}</Text>
+                    <Text style={styles.itemTitle}>{title}</Text>
+                    <Text style={styles.itemDescription} numberOfLines={2}>{description}</Text>
                   </View>
                   {!notif.leida && <View style={styles.unreadDot} />}
                 </TouchableOpacity>

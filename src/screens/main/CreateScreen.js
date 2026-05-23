@@ -100,8 +100,7 @@ export default function Crear({ route, navigation }) {
           await addDoc(collection(db, 'notificaciones'), {
             usuarioId: documento.id,
             tipo: 'ticket_match',
-            titulo: 'Ticket que coincide con tus habilidades',
-            descripcion: `Alguien necesita ayuda con: ${selectedSkills.join(', ')}`,
+            tags: selectedSkills,
             leida: false,
             fecha: new Date().toISOString()
           });

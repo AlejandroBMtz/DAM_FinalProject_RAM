@@ -132,8 +132,7 @@ export default function TicketScreen({ route }) {
         await addDoc(collection(db, 'notificaciones'), {
           usuarioId: ticketData.usuario,
           tipo: 'mensaje',
-          titulo: "¡Alguien quiere ayudarte! 🚀",
-          descripcion: `Han aceptado tu ticket: "${ticketData.titulo}".`,
+          ticket: ticketData.titulo,
           leida: false,
           fecha: new Date().toISOString()
         });
