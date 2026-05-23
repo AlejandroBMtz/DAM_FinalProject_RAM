@@ -6,25 +6,19 @@ import { auth, db } from '../../services/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
 import i18next from '../../services/staticTL';
+import { getAllSkillNames } from '../../utils/tagsList';
 
 const CARRERAS = [
-  'Licenciatura en Informática',
-  'Licenciatura en Administración de las TI',
-  'Ingeniería de Software',
-  'Ingeniería en Computación',
-  'Ingeniería en Telecomunicaciones y Redes',
-  'Ingeniería en Ciencia y Analítica de Datos',
-  'Ingeniería en Tecnologías de Información y Ciberseguridad',
+  i18next.t("profile.carrera.li"),
+  i18next.t("profile.carrera.lati"),
+  i18next.t("profile.carrera.sofli"),
+  i18next.t("profile.carrera.ic"),
+  i18next.t("profile.carrera.itr"),
+  i18next.t("profile.carrera.cad"),
+  i18next.t("profile.carrera.itic"),
 ];
 
 const SEMESTRES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-
-const HABILIDADES = [
-  'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño',
-  'JavaScript', 'Algoritmos', 'React Native', 'Node.js',
-  'UX/UI', 'Figma', 'Recursión', 'Java', 'Express',
-  'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave',
-];
 
 export default function EditProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -230,7 +224,7 @@ export default function EditProfileScreen({ navigation }) {
           <Text style={styles.fieldLabel}>{i18next.t("profile.edit.habilidades")}</Text>
           <Text style={styles.fieldHint}>{i18next.t("profile.edit.selecciona")}</Text>
           <View style={styles.tagsGrid}>
-            {HABILIDADES.map((skill) => {
+            {getAllSkillNames().map((skill) => {
               const active = habilidades.includes(skill);
               return (
                 <TouchableOpacity

@@ -11,6 +11,7 @@ import {
 import { auth, db } from '../../services/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
+import { normalizeSkillName } from '../../utils/tagsList';
 import { penalizarAbandono } from '../../utils/points';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -562,7 +563,7 @@ export default function MyTicketsScreen() {
           <View style={styles.tagsContainer}>
             {ticket.etiquetas?.slice(0, 3).map((tag, idx) => (
               <View key={idx} style={styles.cardTag}>
-                <Text style={styles.cardTagText}>{tag}</Text>
+                <Text style={styles.cardTagText}>{normalizeSkillName(tag)}</Text>
               </View>
             ))}
           </View>
@@ -697,7 +698,7 @@ export default function MyTicketsScreen() {
           <View style={styles.tagsContainer}>
             {ticket.etiquetas?.slice(0, 3).map((tag, idx) => (
               <View key={idx} style={styles.cardTag}>
-                <Text style={styles.cardTagText}>{tag}</Text>
+                <Text style={styles.cardTagText}>{normalizeSkillName(tag)}</Text>
               </View>
             ))}
           </View>
@@ -1062,7 +1063,7 @@ export default function MyTicketsScreen() {
               <View style={styles.badgesRow}>
                 {selectedRatingItem.etiquetas.map((etq, i) => (
                   <View key={i} style={styles.ratingBadge}>
-                    <Text style={styles.ratingBadgeText}>{etq}</Text>
+                    <Text style={styles.ratingBadgeText}>{normalizeSkillName(etq)}</Text>
                   </View>
                 ))}
               </View>

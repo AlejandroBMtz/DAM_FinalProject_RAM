@@ -12,6 +12,7 @@ import { ALL_BADGES } from '../../utils/badges';
 
 import i18next from '../../services/staticTL';
 
+import { getSkillByName } from '../../utils/tagsList';
 
 
 const getLevelName = (level) => {
@@ -182,13 +183,16 @@ const ProfileScreen = () => {
           {habilidades.map((skill, i) => (
             <View key={i} style={styles.skillChip}>
               <MaterialCommunityIcons
-                name="lightning-bolt"
-                size={14}
-                color="#818CF8"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.skillText}>{skill}</Text>
-            </View>
+              name="lightning-bolt"
+              size={14}
+              color="#818CF8"
+              style={{ marginRight: 6 }}
+            />
+
+            <Text style={styles.skillText}>
+              {getSkillByName(skill)}
+            </Text>
+          </View>
           ))}
         </View>
       </View>

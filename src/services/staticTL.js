@@ -208,6 +208,16 @@ i18next.init({
           errorCerrar: "The session could not be closed.",
           eliminar: "Delete account",
           eliminarConfirmacion: "This action is irreversible. Are you sure you want to delete your account?",
+          student: "Student",
+          carrera: {
+            li: 'Computer Science',
+            lati: 'IT Administration',
+            sof: 'Software Engineering',
+            ic: 'Computer Engineering',
+            itr: 'Telecommunication and Networks Engineering',
+            cad: 'Data Science and Analytics Engineering',
+            itic: 'IT and Cybersecurity Engineering',
+          }
         },
         home: {
           filtro: 'Filter your search',
@@ -374,7 +384,36 @@ i18next.init({
         },
         notif: {
           titulo: "Notifications",
-          sinNotif: "You don't have any notifications yet."
+          sinNotif: "You don't have any notifications yet.",
+          mensaje: {
+            titulo: "Someone wants to help you! 🚀",
+            desc: "Your request has been taken: \"{{ticket}}\""
+          },
+          match: {
+            titulo: "A request that matches your skills",
+            desc: "Someone needs help with: {{tags}}"
+          }
+        },
+        skills: {
+          programming: 'Programming',
+          python: 'Python',
+          algebra: 'Algebra',
+          calculus: 'Calculus',
+          design: 'Design',
+          javascript: 'JavaScript',
+          algorithms: 'Algorithms',
+          reactNative: 'React Native',
+          nodejs: 'Node.js',
+          uxui: 'UX/UI',
+          figma: 'Figma',
+          recursion: 'Recursion',
+          java: 'Java',
+          express: 'Express',
+          database: 'Database',
+          sql: 'SQL',
+          nosql: 'NoSQL',
+          aws: 'AWS',
+          octave: 'Octave',
         },
         reporte: {
           contenido: 'Inappropriate or adult content',
@@ -588,6 +627,16 @@ i18next.init({
           errorCerrar: "No se pudo cerrar la sesión.",
           eliminar: "Eliminar cuenta",
           eliminarConfirmacion: "Esta acción es irreversible. ¿Seguro que deseas eliminar tu cuenta?",
+          student: "Estudiante",
+          carrera: {
+            li: 'Licenciatura en Informática',
+            lati: 'Licenciatura en Administración de las TI',
+            sof: 'Ingeniería de Software',
+            ic: 'Ingeniería en Computación',
+            itr: 'Ingeniería en Telecomunicaciones y Redes',
+            cad: 'Ingeniería en Ciencia y Analítica de Datos',
+            itic: 'Ingeniería en Tecnologías de Información y Ciberseguridad',
+          }
         },
         home: {
           filtro: 'Filtrar búsqueda',
@@ -754,7 +803,36 @@ i18next.init({
         },
         notif: {
           titulo: "Notificaciones",
-          sinNotif: "No tines notificaciones aún."
+          sinNotif: "No tines notificaciones aún.",
+          mensaje: {
+            titulo: "¡Alguien quiere ayudarte! 🚀",
+            desc: "Han aceptado tu ticket: \"{{ticket}}\""
+          },
+          match: {
+            titulo: "Ticket que coincide con tus habilidades",
+            desc: "Alguien necesita ayuda con: {{tags}}"
+          }
+        },
+        skills: {
+          programming: 'Programación',
+          python: 'Python',
+          algebra: 'Álgebra',
+          calculus: 'Cálculo',
+          design: 'Diseño',
+          javascript: 'JavaScript',
+          algorithms: 'Algoritmos',
+          reactNative: 'React Native',
+          nodejs: 'Node.js',
+          uxui: 'UX/UI',
+          figma: 'Figma',
+          recursion: 'Recursión',
+          java: 'Java',
+          express: 'Express',
+          database: 'Base de Datos',
+          sql: 'SQL',
+          nosql: 'NoSQL',
+          aws: 'AWS',
+          octave: 'Octave',
         },
         reporte: {
           contenido: 'Contenido inapropiado o adulto',

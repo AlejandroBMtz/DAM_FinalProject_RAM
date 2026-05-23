@@ -17,6 +17,9 @@ import i18next from '../../services/staticTL';
 import { auth, db } from '../../services/firebaseConfig';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 
+// --- Importar lista de habilidades centralizada ---
+import { getAllSkillNames } from '../../utils/tagsList';
+
 export default function Crear({ route, navigation }) {
   const [titulo, setTitulo] = useState('');
   const [desc, setDesc] = useState('');
@@ -32,13 +35,6 @@ export default function Crear({ route, navigation }) {
       setPrioridad(null);
     }, [])
   );
-
-  const HABILIDADES_INFORMATICA = [
-    'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño',
-    'JavaScript', 'Algoritmos', 'React Native', 'Node.js',
-    'UX/UI', 'Figma', 'Recursión', 'Java', 'Express',
-    'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave'
-  ];
 
   // -funcion sin alerta
   const toggleSkill = (skill) => {
@@ -104,8 +100,7 @@ export default function Crear({ route, navigation }) {
           await addDoc(collection(db, 'notificaciones'), {
             usuarioId: documento.id,
             tipo: 'ticket_match',
-            titulo: 'Ticket que coincide con tus habilidades',
-            descripcion: `Alguien necesita ayuda con: ${selectedSkills.join(', ')}`,
+            tags: selectedSkills,
             leida: false,
             fecha: new Date().toISOString()
           });
@@ -229,7 +224,7 @@ export default function Crear({ route, navigation }) {
 
         <Text style={styles.sectionLabel}>{i18next.t("crear.tags")}</Text>
         <View style={styles.tagsContainer}>
-          {HABILIDADES_INFORMATICA.map((skill, index) => {
+          {getAllSkillNames().map((skill, index) => {
             const isSelected = selectedSkills.includes(skill);
             return (
               <TouchableOpacity

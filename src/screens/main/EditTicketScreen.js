@@ -18,6 +18,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 
 import i18next from '../../services/staticTL';
 
+import { getAllSkillNames, normalizeSkillName } from '../../utils/tagsList';
+
 export default function EditTicketScreen({ route, navigation }) {
   // Recibimos los datos del ticket a editar mediante los parámetros de navegación
   const { ticketData } = route.params || {};
@@ -25,20 +27,15 @@ export default function EditTicketScreen({ route, navigation }) {
   // Inicializamos los estados con la información existente
   const [titulo, setTitulo] = useState(ticketData?.titulo || '');
   const [desc, setDesc] = useState(ticketData?.desc || '');
-  const [selectedSkills, setSelectedSkills] = useState(ticketData?.etiquetas || []);
+  const [selectedSkills, setSelectedSkills] = useState(
+    (ticketData?.etiquetas || []).map(tag => normalizeSkillName(tag))
+  );
   const [prioridad, setPrioridad] = useState(ticketData?.prioridad || null);
   const [loading, setLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Ref para limpiar el timeout de manera segura
   const timerRef = useRef(null);
-
-  const HABILIDADES_INFORMATICA = [
-    'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño',
-    'JavaScript', 'Algoritmos', 'React Native', 'Node.js',
-    'UX/UI', 'Figma', 'Recursión', 'Java', 'Express',
-    'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave'
-  ];
 
   // Limpieza del temporizador si el usuario sale antes de que termine el Modal
   useEffect(() => {
@@ -200,7 +197,7 @@ export default function EditTicketScreen({ route, navigation }) {
 
         <Text style={styles.sectionLabel}>{i18next.t("crear.tags")}</Text>
         <View style={styles.tagsContainer}>
-          {HABILIDADES_INFORMATICA.map((skill, index) => {
+          {getAllSkillNames().map((skill, index) => {
             const isSelected = selectedSkills.includes(skill);
             return (
               <TouchableOpacity 

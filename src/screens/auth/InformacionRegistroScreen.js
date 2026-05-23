@@ -19,12 +19,8 @@ import { auth, db } from '../../services/firebaseConfig';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore'; 
 
-const HABILIDADES_INFORMATICA = [
-  'Programación', 'Python', 'Álgebra', 'Cálculo', 'Diseño', 
-  'JavaScript', 'Algoritmos', 'React Native', 'Node.js', 
-  'UX/UI', 'Figma', 'Recursión', 'Java', 'Express', 
-  'Base de Datos', 'SQL', 'NoSQL', 'AWS', 'Octave'
-];
+// --- Importar lista de habilidades centralizada ---
+import { getAllSkillNames } from '../../utils/tagsList';
 
 const CARRERAS = [
   'Licenciatura en Informática',
@@ -161,7 +157,7 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
         <Text style={[styles.sectionLabel, { marginTop: 10 }]}>{i18next.t('auth.register.skillsLabel')}</Text>
         <Text style={styles.sectionSubtitle}>{i18next.t('auth.register.skillsHint')}</Text>
         <View style={styles.tagsContainer}>
-          {HABILIDADES_INFORMATICA.map((skill, index) => {
+          {getAllSkillNames().map((skill, index) => {
             const isSelected = selectedSkills.includes(skill);
             
             return (
