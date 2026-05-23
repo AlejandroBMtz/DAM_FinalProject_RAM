@@ -1,20 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  StatusBar,
-  Alert,
-  Image,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Modal, Image, ScrollView, } from 'react-native';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { auth, db } from '../../services/firebaseConfig';
-import { signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 import { ALL_BADGES } from '../../utils/badges';
@@ -23,7 +14,6 @@ import i18next from '../../services/staticTL';
 
 import { getSkillByName } from '../../utils/tagsList';
 
-//Helpers
 
 const getLevelName = (level) => {
   const names = {
@@ -46,7 +36,6 @@ const getLevelName = (level) => {
   return names[level] || `${i18next.t("profile.nivel")} ${level}`;
 };
 
-// Component
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
@@ -64,7 +53,7 @@ const ProfileScreen = () => {
   const [previousLevel, setPreviousLevel] = useState(null);
   const [showAllBadges, setShowAllBadges] = useState(false);
 
-  // IDs de insignias que el usuario ya gano (vienen de Firestore)
+  // IDs de insignias que el usuario ya gano
   const [earnedBadgeIds, setEarnedBadgeIds] = useState([]);
 
   const [points, setPoints] = useState(0);
@@ -76,7 +65,11 @@ const ProfileScreen = () => {
     ? new Date(fechaRegistro).toLocaleDateString('es-ES')
     : '';
 
-  // Mezcla ALL_BADGES con el estado earned/locked del usuario
+  //Modales
+  const [levelUpModal, setLevelUpModal] = useState({ visible: false, newLevel: 1, levelTitle: '' });
+  const [badgeModal, setBadgeModal] = useState({ visible: false, badge: null });
+
+  // Mezcla ALL_BADGES con estado earned/locked
   const badges = ALL_BADGES();
   const badgesWithStatus = badges.map((b) => ({
     ...b,
@@ -88,7 +81,7 @@ const ProfileScreen = () => {
     ? badgesWithStatus
     : badgesWithStatus.slice(0, PREVIEW_COUNT);
 
-  //Firestore listener
+  // Firestore listener 
   useEffect(() => {
     if (!auth.currentUser) return;
 
@@ -110,14 +103,14 @@ const ProfileScreen = () => {
       setPhotoUrl(data.fotoPerfil || '');
       setEarnedBadgeIds(data.badges || []);
 
-      // Alerta de subida de nivel
+      // Modal de subida de nivel
       const newLevel = Math.max(1, Math.floor((data.points || 0) / 100) + 1);
       if (previousLevel !== null && newLevel > previousLevel) {
-        Alert.alert(
-          i18next.t("profile.newLevel.titulo"),
-          i18next.t("profile.newLevel.mensaje", {newLevel: newLevel, levelTitle: getLevelName(newLevel)}),
-          [{ text: 'OK' }]
-        );
+        setLevelUpModal({
+          visible: true,
+          newLevel,
+          levelTitle: getLevelName(newLevel),
+        });
       }
       setPreviousLevel(newLevel);
     });
@@ -125,10 +118,6 @@ const ProfileScreen = () => {
     return () => unsubscribe();
   }, [previousLevel]);
 
-  // Logout
-
-
-  // Render
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <StatusBar barStyle="light-content" />
@@ -159,7 +148,7 @@ const ProfileScreen = () => {
         <Text style={styles.subtitle}>
           {carrera} · {semestre}° {i18next.t("profile.semestre")}
         </Text>
-        <Text style={styles.subtitleDate}>{i18next.t("profile.activeSince", {date: formattedDate})}</Text>
+        <Text style={styles.subtitleDate}>{i18next.t("profile.activeSince", { date: formattedDate })}</Text>
 
         <View style={styles.pointsRow}>
           <MaterialCommunityIcons name="lightning-bolt" size={26} color="#FACC15" />
@@ -167,9 +156,14 @@ const ProfileScreen = () => {
           <Text style={styles.pointsLabel}>{i18next.t("profile.puntos")}</Text>
         </View>
 
+        {/* Nivel  y ango */}
         <View style={styles.levelBadge}>
           <MaterialCommunityIcons name="chevron-up" size={14} color="#A78BFA" style={{ marginRight: 2 }} />
-          <Text style={styles.levelText}>{i18next.t("profile.nivel")} {level}</Text>
+          <Text style={styles.levelText}>
+            {i18next.t("profile.nivel")} {level}
+            <Text style={styles.rangoSeparator}> · </Text>
+            <Text style={styles.rangoText}>{getLevelName(level)}</Text>
+          </Text>
         </View>
 
         <View style={styles.progressBar}>
@@ -178,7 +172,7 @@ const ProfileScreen = () => {
         <Text style={styles.progressText}>
           {progress === 0 && points !== 0
             ? i18next.t("profile.levelClimb")
-            : i18next.t("profile.faltan", {puntos: puntosRestantes})}
+            : i18next.t("profile.faltan", { puntos: puntosRestantes })}
         </Text>
       </View>
 
@@ -203,48 +197,22 @@ const ProfileScreen = () => {
         </View>
       </View>
 
-      {/* ESTADÍSTICAS */}
+      {/* ESTADISTICAS */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{i18next.t("profile.estadisticas.titulo")}</Text>
         <View style={styles.statsGrid}>
           <View style={styles.card}>
-      <MaterialCommunityIcons
-        name="hand-heart"
-        size={20}
-        color="#22C55E"
-        style={{ marginBottom: 6 }}
-      />
-      <Text style={styles.cardNumber0}>
-        {helpGiven}
-      </Text>
-
-      <Text style={styles.cardLabel}>
-        {i18next.t("profile.estadisticas.ayuda")}
-      </Text>
-    </View>
+            <MaterialCommunityIcons name="hand-heart" size={20} color="#22C55E" style={{ marginBottom: 6 }} />
+            <Text style={styles.cardNumber0}>{helpGiven}</Text>
+            <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.ayuda")}</Text>
+          </View>
           <View style={styles.card}>
-      <MaterialCommunityIcons
-        name="star"
-        size={20}
-        color="#F59E0B"
-        style={{ marginBottom: 6 }}
-      />
-
-      <Text style={styles.cardNumber1}>
-        {rated.toFixed(1)}
-      </Text>
-
-      <Text style={styles.cardLabel}>
-        {i18next.t("profile.estadisticas.calificacion")}
-      </Text>
-    </View>
+            <MaterialCommunityIcons name="star" size={20} color="#F59E0B" style={{ marginBottom: 6 }} />
+            <Text style={styles.cardNumber1}>{rated.toFixed(1)}</Text>
+            <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.calificacion")}</Text>
+          </View>
           <View style={styles.card}>
-            <MaterialCommunityIcons
-              name="message-text"
-              size={20}
-              color="#3B82F6"
-              style={{ marginBottom: 6 }}
-            />
+            <MaterialCommunityIcons name="message-text" size={20} color="#3B82F6" style={{ marginBottom: 6 }} />
             <Text style={styles.cardNumber2}>{helpAsked}</Text>
             <Text style={styles.cardLabel}>{i18next.t("profile.estadisticas.solicitudes")}</Text>
           </View>
@@ -265,14 +233,7 @@ const ProfileScreen = () => {
             <TouchableOpacity
               key={badge.id}
               style={[styles.badgeCard, !badge.earned && styles.badgeCardLocked]}
-              onPress={() =>
-                Alert.alert(
-                  badge.earned ? badge.label : `🔒 ${badge.label}`,
-                  badge.earned
-                    ? `${i18next.t("badges.desbloq")}\n${badge.desc}`
-                    : `${i18next.t("badges.req")} ${badge.desc}`
-                )
-              }
+              onPress={() => setBadgeModal({ visible: true, badge })}
               activeOpacity={0.75}
             >
               <Text style={[styles.badgeEmoji, !badge.earned && styles.badgeEmojiLocked]}>
@@ -297,8 +258,83 @@ const ProfileScreen = () => {
         )}
       </View>
 
-      {/* LOGOUT */}
       <View style={{ height: 30 }} />
+
+      {/* ── MODAL: SUBIDA DE NIVEL ── */}
+      <Modal visible={levelUpModal.visible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            {/* Destellos decorativos */}
+            <Text style={styles.levelUpEmoji}>🎉</Text>
+            <Text style={styles.modalMainTitle}>{i18next.t("profile.newLevel.titulo")}</Text>
+            <Text style={styles.newLevelNumber}>Nivel {levelUpModal.newLevel}</Text>
+            <View style={styles.newRangoBadge}>
+              <MaterialCommunityIcons name="chevron-double-up" size={14} color="#A78BFA" style={{ marginRight: 4 }} />
+              <Text style={styles.newRangoText}>{levelUpModal.levelTitle}</Text>
+            </View>
+            <Text style={styles.modalDescription}>
+              {i18next.t("profile.newLevel.mensaje", {
+                newLevel: levelUpModal.newLevel,
+                levelTitle: levelUpModal.levelTitle,
+              })}
+            </Text>
+            <TouchableOpacity
+              style={styles.modalPrimaryBtn}
+              onPress={() => setLevelUpModal(prev => ({ ...prev, visible: false }))}
+            >
+              <Text style={styles.modalPrimaryBtnText}>¡Genial!</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL: DETALLE INSIGNIA ── */}
+      <Modal visible={badgeModal.visible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            {badgeModal.badge && (
+              <>
+                <Text style={styles.badgeModalEmoji}>
+                  {badgeModal.badge.earned ? badgeModal.badge.emoji : '🔒'}
+                </Text>
+                <Text style={styles.modalMainTitle}>
+                  {badgeModal.badge.earned
+                    ? badgeModal.badge.label
+                    : `${badgeModal.badge.label}`}
+                </Text>
+
+                {badgeModal.badge.earned ? (
+                  <>
+                    <View style={styles.badgeEarnedChip}>
+                      <Ionicons name="checkmark-circle" size={14} color="#4ADE80" style={{ marginRight: 4 }} />
+                      <Text style={styles.badgeEarnedChipText}>{i18next.t("badges.desbloq")}</Text>
+                    </View>
+                    <Text style={styles.modalDescription}>{badgeModal.badge.desc}</Text>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.badgeLockedChip}>
+                      <Ionicons name="lock-closed" size={14} color="#8A8F9E" style={{ marginRight: 4 }} />
+                      <Text style={styles.badgeLockedChipText}>Bloqueada</Text>
+                    </View>
+                    <Text style={styles.modalDescription}>
+                      {i18next.t("badges.req")} {badgeModal.badge.desc}
+                    </Text>
+                  </>
+                )}
+
+                <TouchableOpacity
+                  style={styles.modalPrimaryBtn}
+                  onPress={() => setBadgeModal({ visible: false, badge: null })}
+                >
+                  <Text style={styles.modalPrimaryBtnText}>Cerrar</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 };
@@ -317,41 +353,24 @@ const styles = StyleSheet.create({
   },
 
   settingsFloating: {
-  position: 'absolute',
-  top: 52,
-  right: 16,
-
-  width: 48,
-  height: 48,
-
-  justifyContent: 'center',
-  alignItems: 'center',
-
-  backgroundColor: '#7C6CF6',
-
-  borderRadius: 14,
-
-  borderWidth: 1.8,
-  borderColor: '#D4D1FF',
-
-  // Glow principal
-  shadowColor: '#8B7CFF',
-  shadowOffset: {
-    width: 0,
-    height: 0,
+    position: 'absolute',
+    top: 52,
+    right: 16,
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#7C6CF6',
+    borderRadius: 14,
+    borderWidth: 1.8,
+    borderColor: '#D4D1FF',
+    shadowColor: '#8B7CFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
+    elevation: 12,
+    overflow: 'visible',
   },
-  shadowOpacity: 0.9,
-  shadowRadius: 12,
-
-  // Glow secundario
-  elevation: 12,
-
-  // efecto cristal/neon
-  shadowSpread: 0,
-
-  // borde interno visual
-  overflow: 'visible',
-},
 
   avatarWrapper: {
     position: 'absolute',
@@ -445,6 +464,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  rangoSeparator: {
+    color: '#6366F1',
+    fontWeight: '400',
+  },
+
+  rangoText: {
+    color: '#C4B5FD',
+    fontWeight: '700',
+  },
+
   progressBar: {
     width: '80%',
     height: 6,
@@ -494,266 +523,324 @@ const styles = StyleSheet.create({
   },
 
   skillsList: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  marginTop: 4,
-},
-
-skillChip: {
-  flexDirection: 'row',
-  alignItems: 'center',
-
-  paddingHorizontal: 16,
-  paddingVertical: 10,
-
-  marginRight: 10,
-  marginBottom: 10,
-
-  borderRadius: 16,
-
-  backgroundColor: '#111827',
-
-  borderWidth: 1,
-  borderColor: 'rgba(129, 140, 248, 0.35)',
-
-  // Glow elegante
-  shadowColor: '#6366F1',
-  shadowOffset: {
-    width: 0,
-    height: 0,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 4,
   },
-  shadowOpacity: 0.45,
-  shadowRadius: 8,
 
-  elevation: 6,
-},
+  skillChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginRight: 10,
+    marginBottom: 10,
+    borderRadius: 16,
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: 'rgba(129, 140, 248, 0.35)',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
+  },
 
-skillText: {
-  color: '#E0E7FF',
+  skillText: {
+    color: '#E0E7FF',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
 
-  fontSize: 13,
-  fontWeight: '700',
-
-  letterSpacing: 0.4,
-
-  textTransform: 'uppercase',
-},
   statsGrid: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginTop: 4,
-},
-
-card: {
-  flex: 1,
-
-  backgroundColor: '#111827',
-
-  paddingVertical: 18,
-  paddingHorizontal: 12,
-
-  borderRadius: 18,
-
-  alignItems: 'center',
-  justifyContent: 'center',
-
-  marginHorizontal: 5,
-
-  borderWidth: 1,
-  borderColor: 'rgba(255,255,255,0.06)',
-
-  // profundidad
-  shadowColor: '#000',
-  shadowOffset: {
-    width: 0,
-    height: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
-  shadowOpacity: 0.35,
-  shadowRadius: 10,
 
-  elevation: 8,
-},
-
-cardNumber0: {
-  fontSize: 30,
-  fontWeight: '900',
-  color: '#22C55E',
-
-  textShadowColor: 'rgba(34,197,94,0.7)',
-  textShadowOffset: {
-    width: 0,
-    height: 0,
+  card: {
+    flex: 1,
+    backgroundColor: '#111827',
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  textShadowRadius: 12,
 
-  letterSpacing: -1,
-},
-
-cardNumber1: {
-  fontSize: 30,
-  fontWeight: '900',
-  color: '#F59E0B',
-
-  textShadowColor: 'rgba(245,158,11,0.7)',
-  textShadowOffset: {
-    width: 0,
-    height: 0,
+  cardNumber0: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#22C55E',
+    textShadowColor: 'rgba(34,197,94,0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+    letterSpacing: -1,
   },
-  textShadowRadius: 12,
 
-  letterSpacing: -1,
-},
-
-cardNumber2: {
-  fontSize: 30,
-  fontWeight: '900',
-  color: '#3B82F6',
-
-  textShadowColor: 'rgba(59,130,246,0.7)',
-  textShadowOffset: {
-    width: 0,
-    height: 0,
+  cardNumber1: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#F59E0B',
+    textShadowColor: 'rgba(245,158,11,0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+    letterSpacing: -1,
   },
-  textShadowRadius: 12,
 
-  letterSpacing: -1,
-},
+  cardNumber2: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#3B82F6',
+    textShadowColor: 'rgba(59,130,246,0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+    letterSpacing: -1,
+  },
 
-cardLabel: {
-  color: '#9CA3AF',
-
-  fontSize: 10,
-  fontWeight: '600',
-
-  marginTop: 8,
-
-  textAlign: 'center',
-
-  letterSpacing: 0.8,
-
-  textTransform: 'uppercase',
-},
+  cardLabel: {
+    color: '#9CA3AF',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 8,
+    textAlign: 'center',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
 
   // Badges grid
   badgesGrid: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  justifyContent: 'space-between',
-  marginTop: 6,
-},
-
-badgeCard: {
-  width: '31%',
-  aspectRatio: 1,
-
-  borderRadius: 20,
-
-  alignItems: 'center',
-  justifyContent: 'center',
-
-  marginBottom: 14,
-
-  padding: 10,
-
-  backgroundColor: '#131A2A',
-
-  borderWidth: 1,
-  borderColor: 'rgba(139, 92, 246, 0.25)',
-
-  // profundidad
-  shadowColor: '#8B5CF6',
-  shadowOffset: {
-    width: 0,
-    height: 0,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 6,
   },
-  shadowOpacity: 0.35,
-  shadowRadius: 12,
 
-  elevation: 10,
-},
-
-badgeCardLocked: {
-  backgroundColor: '#0B1120',
-  borderColor: 'rgba(255,255,255,0.04)',
-  opacity: 0.45,
-
-  shadowOpacity: 0,
-  elevation: 0,
-},
-
-badgeEmoji: {
-  fontSize: 34,
-
-  textShadowColor: 'rgba(139,92,246,0.8)',
-  textShadowOffset: {
-    width: 0,
-    height: 0,
+  badgeCard: {
+    width: '31%',
+    aspectRatio: 1,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+    padding: 10,
+    backgroundColor: '#131A2A',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.25)',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 10,
   },
-  textShadowRadius: 16,
-},
 
-badgeEmojiLocked: {
-  fontSize: 28,
-  opacity: 0.35,
-},
-
-badgeLabel: {
-  color: '#E5E7EB',
-
-  fontSize: 10,
-  fontWeight: '700',
-
-  marginTop: 10,
-
-  textAlign: 'center',
-
-  paddingHorizontal: 4,
-
-  textTransform: 'uppercase',
-
-  letterSpacing: 0.8,
-},
-
-badgeLabelLocked: {
-  color: '#4B5563',
-},
-
-verMasButton: {
-  alignSelf: 'center',
-
-  marginTop: 10,
-
-  backgroundColor: '#151C2C',
-
-  borderWidth: 1,
-  borderColor: 'rgba(139,92,246,0.25)',
-
-  borderRadius: 999,
-
-  paddingHorizontal: 24,
-  paddingVertical: 10,
-
-  shadowColor: '#8B5CF6',
-  shadowOffset: {
-    width: 0,
-    height: 0,
+  badgeCardLocked: {
+    backgroundColor: '#0B1120',
+    borderColor: 'rgba(255,255,255,0.04)',
+    opacity: 0.45,
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  shadowOpacity: 0.25,
-  shadowRadius: 10,
 
-  elevation: 6,
-},
+  badgeEmoji: {
+    fontSize: 34,
+    textShadowColor: 'rgba(139,92,246,0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
+  },
 
-verMasText: {
-  color: '#C4B5FD',
+  badgeEmojiLocked: {
+    fontSize: 28,
+    opacity: 0.35,
+  },
 
-  fontSize: 12,
-  fontWeight: '700',
+  badgeLabel: {
+    color: '#E5E7EB',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 10,
+    textAlign: 'center',
+    paddingHorizontal: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
 
-  letterSpacing: 1,
+  badgeLabelLocked: {
+    color: '#4B5563',
+  },
 
-  textTransform: 'uppercase',
-},
+  verMasButton: {
+    alignSelf: 'center',
+    marginTop: 10,
+    backgroundColor: '#151C2C',
+    borderWidth: 1,
+    borderColor: 'rgba(139,92,246,0.25)',
+    borderRadius: 999,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+
+  verMasText: {
+    color: '#C4B5FD',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+
+  // ── Modales compartidos ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 28,
+  },
+
+  modalBox: {
+    backgroundColor: '#111827',
+    borderRadius: 24,
+    padding: 28,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 16,
+  },
+
+  modalMainTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: 0.2,
+  },
+
+  modalDescription: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+
+  modalPrimaryBtn: {
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+  },
+
+  modalPrimaryBtnText: {
+    color: '#A78BFA',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 0.3,
+  },
+
+  // modal subida de nivel
+  levelUpEmoji: {
+    fontSize: 52,
+    marginBottom: 12,
+  },
+
+  newLevelNumber: {
+    color: '#FACC15',
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: -1,
+    marginBottom: 10,
+    textShadowColor: 'rgba(250,204,21,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
+  },
+
+  newRangoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(99,102,241,0.1)',
+    marginBottom: 18,
+  },
+
+  newRangoText: {
+    color: '#C4B5FD',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Modal insignia
+  badgeModalEmoji: {
+    fontSize: 64,
+    marginBottom: 12,
+    textShadowColor: 'rgba(139,92,246,0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+
+  badgeEarnedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.4)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 16,
+  },
+
+  badgeEarnedChipText: {
+    color: '#4ADE80',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  badgeLockedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(138, 143, 158, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(138, 143, 158, 0.3)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 16,
+  },
+
+  badgeLockedChipText: {
+    color: '#8A8F9E',
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });
 
 export default ProfileScreen;

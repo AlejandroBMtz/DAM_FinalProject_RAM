@@ -12,6 +12,7 @@ import { auth, db } from '../../services/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
 import { normalizeSkillName } from '../../utils/tagsList';
+import { penalizarAbandono } from '../../utils/points';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -145,6 +146,7 @@ export default function MyTicketsScreen() {
   // Selección para modales
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedReason, setSelectedReason] = useState(null);
+  const [abandonOption, setAbandonOption] = useState('liberar'); // 'liberar' | 'cancelar'
 
   const razonesCancelar = [
     'Ya resolví mi solicitud por otro medio',
@@ -239,7 +241,7 @@ export default function MyTicketsScreen() {
       console.log('Error ayudando:', err);
     });
 
-    // 3. Historial: solicitudes mías resueltas/canceladas/expiradas
+    // 3. Historial: solicitudes mias resueltas/canceladas/expiradas
     const qHist = query(
       solRef,
       where('usuario', '==', currentUid),
@@ -257,7 +259,7 @@ export default function MyTicketsScreen() {
           ayudanteInfo = await fetchUserData(data.ayudante);
         }
 
-        // Buscar valoración asociada
+        // Buscar valoracion asociada
         if (data.estado === 'resuelto') {
           try {
             const valRef = collection(db, 'valoraciones');
@@ -411,25 +413,41 @@ export default function MyTicketsScreen() {
       return;
     }
     try {
-      // Marcar conversación como cancelada
+      const ayudanteUid = auth.currentUser?.uid;
+
+      // Penalizar puntos segun la prioridad del ticket
+      if (ayudanteUid) {
+        await penalizarAbandono(ayudanteUid, selectedTicket.prioridad || 3);
+      }
+
       await updateDoc(doc(db, 'conversaciones', selectedTicket.conversacionId || selectedTicket.id), {
         estado: 'cancelada',
         motivoAbandono: selectedReason,
         fechaActualizacion: Timestamp.now(),
       });
-      // Volver a dejar el ticket disponible si existe
+
       if (selectedTicket.solicitudId) {
-        await updateDoc(doc(db, 'solicitudes', selectedTicket.solicitudId), {
-          estado: 'disponible',
-          ayudante: null,
-          fechaActualizacion: Timestamp.now(),
-        });
+        if (abandonOption === 'liberar') {
+          // liberar ticket para que otro lo tome
+          await updateDoc(doc(db, 'solicitudes', selectedTicket.solicitudId), {
+            estado: 'disponible',
+            ayudante: null,
+            fechaActualizacion: Timestamp.now(),
+          });
+        } else {
+          // cerrar ticket permanentemente
+          await updateDoc(doc(db, 'solicitudes', selectedTicket.solicitudId), {
+            estado: 'cancelado',
+            fechaActualizacion: Timestamp.now(),
+          });
+        }
       }
     } catch (error) {
       console.log('Error al abandonar', error);
     }
     setAbandonModalVisible(false);
     setSelectedReason(null);
+    setAbandosnOption('liberar');
   };
 
   const irAlChat = async (ticket) => {
@@ -449,6 +467,7 @@ export default function MyTicketsScreen() {
               conversacionData: {
                 id: convSnap.id,
                 nombre: otherUser?.nombre || 'Usuario',
+                fotoPerfil: otherUser?.fotoPerfil || null,
                 ...convoData,
               },
             },
@@ -475,6 +494,7 @@ export default function MyTicketsScreen() {
             conversacionData: {
               id: docSnap.id,
               nombre: otherUser?.nombre || 'Usuario',
+              fotoPerfil: otherUser?.fotoPerfil || null,
               ...convoData,
             },
           },
@@ -628,7 +648,7 @@ export default function MyTicketsScreen() {
           <Text style={styles.emptyStateText}>{i18next.t("tickets.sinAyudas")}</Text>
           <TouchableOpacity
             style={styles.emptyStateBtn}
-            onPress={() => navigation.navigate('Explorar')}
+            onPress={() => navigation.navigate('Inicio')}
           >
             <Text style={styles.emptyStateBtnText}>{i18next.t("tickets.explorar")}</Text>
           </TouchableOpacity>
@@ -906,7 +926,7 @@ export default function MyTicketsScreen() {
             <Ionicons name="warning" size={32} color="#FFD166" style={{ alignSelf: 'center' }} />
             <Text style={styles.modalTitleLarge}>¿Cancelar con voluntario asignado?</Text>
             <Text style={styles.modalSubtitleLarge}>
-              El voluntario ya está ayudándote. Cancelar puede afectar su karma y el tuyo.
+              El voluntario ya está ayudándote. Cancelar puede afectar sus puntos y los tuyos.
             </Text>
             <Text style={styles.sectionLabelModal}>MOTIVO DE CANCELACIÓN</Text>
             {razonesCancelar.map((razon, idx) => (
@@ -947,9 +967,45 @@ export default function MyTicketsScreen() {
             <Ionicons name="ban" size={32} color="#FF4D4D" style={{ alignSelf: 'center' }} />
             <Text style={styles.modalTitleLarge}>¿Abandonar esta ayuda?</Text>
             <Text style={styles.modalSubtitleLarge}>
-              Si abandonas sin completar la sesión, tu karma puede verse afectado negativamente.
+              Si abandonas sin completar la sesión, tus puntos pueden verse afectados negativamente.
             </Text>
-            <Text style={styles.sectionLabelModal}>MOTIVO DE ABANDONO</Text>
+
+            {/* Selector de accion: liberar o cerrar */}
+            <Text style={styles.sectionLabelModal}>¿QUÉ HACER CON EL TICKET?</Text>
+            <TouchableOpacity
+              style={[styles.reasonItem, abandonOption === 'liberar' && styles.reasonItemSelected]}
+              onPress={() => setAbandonOption('liberar')}
+            >
+              <View style={styles.reasonRow}>
+                <View style={[styles.radioCircle, abandonOption === 'liberar' && styles.radioCircleSelected]}>
+                  {abandonOption === 'liberar' && <View style={styles.radioInner} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reasonText}>Abandonar y liberar el ticket</Text>
+                  <Text style={[styles.reasonText, { fontSize: 11, color: '#d6d8e1', marginTop: 2, flex: undefined }]}>
+                    El ticket quedará disponible para otro voluntario
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.reasonItem, abandonOption === 'cancelar' && { borderColor: '#FF4D4D', backgroundColor: 'rgba(255, 77, 77, 0.05)' }]}
+              onPress={() => setAbandonOption('cancelar')}
+            >
+              <View style={styles.reasonRow}>
+                <View style={[styles.radioCircle, abandonOption === 'cancelar' && styles.radioCircleSelected]}>
+                  {abandonOption === 'cancelar' && <View style={styles.radioInner} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reasonText}>Cerrar el ticket permanentemente</Text>
+                  <Text style={[styles.reasonText, { fontSize: 11, color: '#d6d8e1', marginTop: 2, flex: undefined }]}>
+                    El ticket no podrá ser atendido por nadie más
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <Text style={[styles.sectionLabelModal, { marginTop: 16 }]}>MOTIVO DE ABANDONO</Text>
             {razonesAbandonar.map((razon, idx) => (
               <TouchableOpacity
                 key={idx}
@@ -973,7 +1029,10 @@ export default function MyTicketsScreen() {
             >
               <Text style={styles.btnTextWhiteBold}>Confirmar abandono</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btnKeepDark} onPress={() => { setAbandonModalVisible(false); setSelectedReason(null); }}>
+            <TouchableOpacity
+              style={styles.btnKeepDark}
+              onPress={() => { setAbandonModalVisible(false); setSelectedReason(null); setAbandonOption('liberar'); }}
+            >
               <Text style={styles.btnTextWhiteBold}>Seguir ayudando</Text>
             </TouchableOpacity>
           </View>

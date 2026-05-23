@@ -192,7 +192,18 @@ const SignUpScreen = ({ navigation }) => {
           />
         </TouchableOpacity>
         <Text style={styles.termsText}>
-          Acepto los <Text style={styles.linkText}>términos y condiciones</Text> y las <Text style={styles.linkText}>políticas de privacidad</Text>
+          Acepto los{' '}
+          <Text 
+            style={styles.linkText}
+            onPress={() => navigation.navigate('TermsScreen')}>
+            términos y condiciones
+          </Text>
+          {' '}y las{' '}
+          <Text 
+            style={styles.linkText}
+            onPress={() => navigation.navigate('PrivacyScreen')}>
+            políticas de privacidad
+          </Text>
         </Text>
       </View>
       {errors.terms && <Text style={[styles.errorText, { marginBottom: 15 }]}>{errors.terms}</Text>}
@@ -319,6 +330,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  linkText: {
+  color: '#2563EB',
+  textDecorationLine: 'underline',
+},
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',

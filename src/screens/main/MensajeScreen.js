@@ -6,6 +6,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDocs, deleteDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
+import { otorgarPuntosResolucion, penalizarAbandono } from '../../utils/points';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
 import i18next from '../../services/staticTL';
@@ -48,10 +49,15 @@ export default function MensajeScreen() {
   const keyboardHeight = useKeyboardHeight();
 
   // Estados de Modales
-  const [modalVisible, setModalVisible] = useState(false); // Modal de Calificación
-  const [cancelModalVisible, setCancelModalVisible] = useState(false); // Modal Cancelar/Abandonar
+  const [modalVisible, setModalVisible] = useState(false);         // Modal de Calificación
+  const [cancelModalVisible, setCancelModalVisible] = useState(false); // Modal Cancelar/Abandonar 
+  const [abandonarModalVisible, setAbandonarModalVisible] = useState(false); // Modal Abandonar
   const [terminarModalVisible, setTerminarModalVisible] = useState(false); // Modal Terminar
   const [imagenVisor, setImagenVisor] = useState(null);
+
+  // Modal de puntos obtenidos
+  const [puntosModalVisible, setPuntosModalVisible] = useState(false);
+  const [puntosGanados, setPuntosGanados] = useState(0);
 
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
@@ -211,6 +217,8 @@ export default function MensajeScreen() {
     };
   }, [conversacionData?.id, currentUid]);
 
+  // Finalización con calificación y puntos
+
   const performTermination = async () => {
     const convoUid = conversacionData?.id;
     const solicitudId = conversacionData?.solicitudId;
@@ -219,7 +227,8 @@ export default function MensajeScreen() {
     try {
       const ayudante = conversacionData?.ayudante;
       const currentUid = auth.currentUser.uid;
-      
+
+      // Guardar valoracion
       await addDoc(collection(db, 'valoraciones'), {
         solicitudId,
         de: currentUid,
@@ -230,16 +239,42 @@ export default function MensajeScreen() {
         fecha: new Date().toISOString()
       });
 
+      // Actualizar promedio del ayudante
       const userSnap = await getDoc(doc(db, 'users', ayudante));
       const userData = userSnap.data();
       const oldRating = userData.rated || 0;
       const oldHelpGiven = userData.helpGiven || 0;
       const newRating = ((oldRating * oldHelpGiven) + rating) / (oldHelpGiven + 1);
-      
+
       await updateDoc(doc(db, 'users', ayudante), {
         rated: newRating,
         helpGiven: oldHelpGiven + 1
       });
+
+      // Obtener prioridad del ticket para calcular puntos
+      let prioridad = 3; // Baja por defecto
+      try {
+        const solicitudSnap = await getDoc(doc(db, 'solicitudes', solicitudId));
+        if (solicitudSnap.exists()) {
+          prioridad = solicitudSnap.data().prioridad || 3;
+        }
+      } catch (_) {}
+
+      // Obtener fecha de inicio de la conversacion para speed bonus
+      const fechaInicio = conversacionData?.fechaCreacion || null;
+
+      // Otorgar puntos al ayudante segun prioridad + calificaciun
+      const puntosOtorgados = await otorgarPuntosResolucion(
+        ayudante,
+        prioridad,
+        rating,
+        fechaInicio
+      );
+
+      // Evaluar insignias del ayudante
+      try { await evaluateBadges(); } catch (_) {}
+
+      // Marcar como completada
       await updateDoc(doc(db, 'conversaciones', convoUid), {
         estado: 'completada',
         fechaActualizacion: new Date().toISOString()
@@ -249,7 +284,15 @@ export default function MensajeScreen() {
         fechaActualizacion: new Date().toISOString()
       });
 
-      navigation.navigate('Tickets');
+      // Mostrar modal de puntos si el ayudante es el usuario actual
+      if (ayudante === currentUid && puntosOtorgados !== 0) {
+        setPuntosGanados(puntosOtorgados);
+        setModalVisible(false);
+        setPuntosModalVisible(true);
+      } else {
+        setModalVisible(false);
+        navigation.popToTop();
+      }
     } catch (error) {
       Alert.alert('Error', 'No se pudo finalizar correctamente.');
     }
@@ -288,16 +331,16 @@ export default function MensajeScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') return Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.');
-      
+
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
       if (result.canceled) return;
-      
+
       setLoading(true);
       const imageUrl = await uploadImageToCloudinary(result.assets[0].uri);
       const convoUid = conversacionData?.id;
       const currentUid = auth.currentUser.uid;
       const otherUid = conversacionData.solicitante === currentUid ? conversacionData.ayudante : conversacionData.solicitante;
-      
+
       await addDoc(collection(db, 'mensajes'), {
         idConversacion: convoUid,
         idUsuario: currentUid,
@@ -319,26 +362,76 @@ export default function MensajeScreen() {
     }
   };
 
-  // Funciones de Cancelación (Ayudante)
+  //Acciones Cancelar/Abandonar (Ayudante desde chat)
+
   const abrirModalCancelar = () => setCancelModalVisible(true);
-  
-  const abandonarAyuda = async () => {
-    await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
-    await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), { estado: 'disponible', ayudante: null });
-    setCancelModalVisible(false);
-    navigation.goBack();
-  };
-  
-  const finalizarComoCancelado = async () => {
-    await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
-    await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), { estado: 'cancelado' });
-    setCancelModalVisible(false);
-    navigation.goBack();
+
+  // dabandonar y liberar el ticket (queda disponible para otro)
+  // Aplica penalizacion de puntos segun prioridad
+  const abandonarYLiberar = async () => {
+    try {
+      const ayudanteUid = auth.currentUser.uid;
+
+      // obtener prioridad del ticket
+      let prioridad = 3;
+      if (conversacionData?.solicitudId) {
+        try {
+          const solSnap = await getDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
+          if (solSnap.exists()) prioridad = solSnap.data().prioridad || 3;
+        } catch (_) {}
+      }
+
+      // Penalizar puntos
+      await penalizarAbandono(ayudanteUid, prioridad);
+
+      // Liberar ticket
+      await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
+      await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), {
+        estado: 'disponible',
+        ayudante: null,
+      });
+
+      setCancelModalVisible(false);
+      navigation.goBack();
+    } catch (error) {
+      console.log('Error al abandonar y liberar:', error);
+      setCancelModalVisible(false);
+      navigation.goBack();
+    }
   };
 
-  // Funciones de Terminación (Solicitante)
+  //finalizar como cancelado (cierra el ticket permanentemente)
+  // Tambien aplica penalizacion
+  const finalizarComoCancelado = async () => {
+    try {
+      const ayudanteUid = auth.currentUser.uid;
+
+      let prioridad = 3;
+      if (conversacionData?.solicitudId) {
+        try {
+          const solSnap = await getDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
+          if (solSnap.exists()) prioridad = solSnap.data().prioridad || 3;
+        } catch (_) {}
+      }
+
+      await penalizarAbandono(ayudanteUid, prioridad);
+
+      await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
+      await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), { estado: 'cancelado' });
+
+      setCancelModalVisible(false);
+      navigation.goBack();
+    } catch (error) {
+      console.log('Error al finalizar como cancelado:', error);
+      setCancelModalVisible(false);
+      navigation.goBack();
+    }
+  };
+
+  // Terminacion (Solicitante)
+
   const abrirModalTerminar = () => setTerminarModalVisible(true);
-  
+
   const confirmarTerminacion = () => {
     setTerminarModalVisible(false);
     setRating(0);
@@ -390,9 +483,9 @@ export default function MensajeScreen() {
         <TouchableOpacity onPress={() => navigation.navigate('MensajesMain')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
-        <Image 
-          source={fotoUrl ? { uri: fotoUrl } : require('../../../assets/images/Logo.png')} 
-          style={styles.avatar} 
+        <Image
+          source={fotoUrl ? { uri: fotoUrl } : require('../../../assets/images/Logo.png')}
+          style={styles.avatar}
         />
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
@@ -402,34 +495,34 @@ export default function MensajeScreen() {
             <Text style={styles.statusText}>{i18next.t('mensajes.online') || 'En línea'}</Text>
           ) : null}
         </View>
-        <TouchableOpacity 
-          style={styles.terminarBtn} 
+        <TouchableOpacity
+          style={styles.terminarBtn}
           onPress={esAyudante ? abrirModalCancelar : abrirModalTerminar}
         >
           <Text style={styles.terminarText}>{esAyudante ? i18next.t("cancelar") : i18next.t("terminar")}</Text>
         </TouchableOpacity>
       </View>
 
-      <ImageBackground 
-        source={require('../../../assets/images/FondoChat.png')} 
-        style={styles.background} 
+      <ImageBackground
+        source={require('../../../assets/images/FondoChat.png')}
+        style={styles.background}
         resizeMode="cover"
       >
-        <ScrollView 
-          ref={scrollViewRef} 
-          style={styles.scrollView} 
-          contentContainerStyle={styles.listContainer} 
-          showsVerticalScrollIndicator={false} 
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {mensajes.map((msg) => {
             const isMine = msg.idUsuario === currentUid;
             const statusIcon = getMessageStatusIcon(msg.status);
             return (
-              <View 
-                key={msg.id} 
+              <View
+                key={msg.id}
                 style={[
-                  styles.cuerpoMensaje, 
+                  styles.cuerpoMensaje,
                   isMine ? styles.cuerpoEnviado : styles.cuerpoRecibido
                 ]}
               >
@@ -457,13 +550,13 @@ export default function MensajeScreen() {
           <Ionicons name="mail-outline" size={22} color="#8A8F9E" />
           <View style={styles.verticalDivider} />
         </View>
-        <TextInput 
-          style={styles.textInput} 
-          value={message} 
-          onChangeText={handleTypingChange} 
+        <TextInput
+          style={styles.textInput}
+          value={message}
+          onChangeText={handleTypingChange}
           placeholder={i18next.t("mensajes.place")}
-          placeholderTextColor="#8A8F9E" 
-          multiline 
+          placeholderTextColor="#8A8F9E"
+          multiline
         />
         <TouchableOpacity style={styles.attachButton} onPress={handlePickImage}>
           <Ionicons name="attach-outline" size={26} color="#8A8F9E" />
@@ -473,29 +566,31 @@ export default function MensajeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* MODAL: CANCELAR (Ayudante) */}
+      {/* modal para camcelar o abandonar*/}
       <Modal visible={cancelModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlayCenter}>
           <View style={styles.modalContentCenter}>
-            <Ionicons 
-              name="warning" 
-              size={40} 
-              color="#FFD166" 
-              style={{ alignSelf: 'center', marginBottom: 15 }} 
+            <Ionicons
+              name="warning"
+              size={40}
+              color="#FFD166"
+              style={{ alignSelf: 'center', marginBottom: 15 }}
             />
             <Text style={styles.modalTitleCenter}>{i18next.t("mensajes.proceder")}</Text>
             <Text style={styles.modalSubtitleCenter}>{i18next.t("mensajes.elegir")}</Text>
-            
-            <TouchableOpacity style={styles.btnActionSecondary} onPress={abandonarAyuda}>
+
+            {/*Abandonar y liberar */}
+            <TouchableOpacity style={styles.btnActionSecondary} onPress={abandonarYLiberar}>
               <Text style={styles.btnActionSecondaryText}>{i18next.t("mensajes.abandonar")}</Text>
               <Text style={styles.btnActionSubText}>{i18next.t("mensajes.libera")}</Text>
             </TouchableOpacity>
-            
+
+            {/* Cerrar ticket permanentemente */}
             <TouchableOpacity style={styles.btnActionDestructive} onPress={finalizarComoCancelado}>
               <Text style={styles.btnActionDestructiveText}>{i18next.t("mensajes.finalizar")}</Text>
               <Text style={styles.btnActionSubTextDestructive}>{i18next.t("mensajes.cierra")}</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.btnActionCancel} onPress={() => setCancelModalVisible(false)}>
               <Text style={styles.btnActionCancelText}>{i18next.t("mensajes.volver")}</Text>
             </TouchableOpacity>
@@ -503,23 +598,23 @@ export default function MensajeScreen() {
         </View>
       </Modal>
 
-      {/* MODAL: TERMINAR (Solicitante) */}
+      {/* TERMINAR (Solicitante) ── */}
       <Modal visible={terminarModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlayCenter}>
           <View style={styles.modalContentCenter}>
-            <Ionicons 
-              name="checkmark-circle" 
-              size={48} 
-              color="#4ADE80" 
-              style={{ alignSelf: 'center', marginBottom: 15 }} 
+            <Ionicons
+              name="checkmark-circle"
+              size={48}
+              color="#4ADE80"
+              style={{ alignSelf: 'center', marginBottom: 15 }}
             />
             <Text style={styles.modalTitleCenter}>{i18next.t("mensajes.resuelto")}</Text>
             <Text style={styles.modalSubtitleCenter}>{i18next.t("mensajes.cerrar")}</Text>
-            
+
             <TouchableOpacity style={styles.btnActionPrimary} onPress={confirmarTerminacion}>
               <Text style={styles.btnActionPrimaryText}>{i18next.t("mensajes.siTerminar")}</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.btnActionCancel} onPress={() => setTerminarModalVisible(false)}>
               <Text style={styles.btnActionCancelText}>{i18next.t("mensajes.seguir")}</Text>
             </TouchableOpacity>
@@ -527,12 +622,12 @@ export default function MensajeScreen() {
         </View>
       </Modal>
 
-      {/* MODAL: CALIFICACIÓN */}
+      {/*CALIFICACION*/}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{i18next.t("mensajes.califica")}</Text>
-            
+
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((s) => (
                 <TouchableOpacity key={s} onPress={() => setRating(s)}>
@@ -540,12 +635,12 @@ export default function MensajeScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            
+
             <View style={styles.tagsContainer}>
               {FEEDBACK.map((t, i) => (
-                <TouchableOpacity 
-                  key={i} 
-                  style={[styles.tag, selectedTags.includes(t) ? styles.tagSelected : styles.tagUnselected]} 
+                <TouchableOpacity
+                  key={i}
+                  style={[styles.tag, selectedTags.includes(t) ? styles.tagSelected : styles.tagUnselected]}
                   onPress={() => toggleTag(t)}
                 >
                   <Text style={[styles.tagText, selectedTags.includes(t) ? styles.tagTextSelected : styles.tagTextUnselected]}>
@@ -554,18 +649,54 @@ export default function MensajeScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            
-            <TextInput 
-              style={styles.feedbackInput} 
-              placeholder="Feedback..." 
-              placeholderTextColor="#8A8F9E" 
-              value={feedback} 
-              onChangeText={setFeedback} 
-              multiline 
+
+            <TextInput
+              style={styles.feedbackInput}
+              placeholder="Feedback..."
+              placeholderTextColor="#8A8F9E"
+              value={feedback}
+              onChangeText={setFeedback}
+              multiline
             />
-            
+
             <TouchableOpacity style={styles.submitButton} onPress={performTermination}>
               <Text style={styles.submitText}>{i18next.t("mensajes.enviar")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/*modal de puntos obtenidos (post-calificacion, solo para ayudante) */}
+      <Modal visible={puntosModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlayCenter}>
+          <View style={styles.modalContentCenter}>
+            {puntosGanados > 0 ? (
+              <>
+                <Ionicons name="trophy" size={44} color="#FFD166" style={{ alignSelf: 'center', marginBottom: 12 }} />
+                <Text style={styles.modalTitleCenter}>¡Ayuda completada!</Text>
+                <Text style={styles.puntosGrandText}>+{puntosGanados} pts</Text>
+                <Text style={styles.modalSubtitleCenter}>
+                  Gracias por tu apoyo. Los puntos han sido añadidos a tu perfil.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="alert-circle" size={44} color="#FF4D4D" style={{ alignSelf: 'center', marginBottom: 12 }} />
+                <Text style={styles.modalTitleCenter}>Sesión finalizada</Text>
+                <Text style={styles.puntosPenalidadText}>{puntosGanados} pts</Text>
+                <Text style={styles.modalSubtitleCenter}>
+                  La calificación baja afectó tus puntos esta vez. ¡Ánimo para la próxima!
+                </Text>
+              </>
+            )}
+            <TouchableOpacity
+              style={styles.btnActionPrimary}
+              onPress={() => {
+                setPuntosModalVisible(false);
+                navigation.navigate('Tickets');
+              }}
+            >
+              <Text style={styles.btnActionPrimaryText}>Ver mis tickets</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -706,6 +837,10 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
   },
+  attachButton: {
+    padding: 4,
+    marginLeft: 4,
+  },
   sendButton: {
     width: 40,
     height: 40,
@@ -721,7 +856,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 
-  // Modales
+  // ── Modales base ──
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -796,7 +931,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  // Modales centrados (Terminar/Cancelar)
+  // ── Modales centrados ──
   modalOverlayCenter: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.8)',
@@ -854,6 +989,7 @@ const styles = StyleSheet.create({
   btnActionSubText: {
     color: '#8A8F9E',
     fontSize: 11,
+    marginTop: 2,
   },
   btnActionDestructive: {
     backgroundColor: 'rgba(255, 77, 77, 0.1)',
@@ -872,6 +1008,7 @@ const styles = StyleSheet.create({
   btnActionSubTextDestructive: {
     color: 'rgba(255, 77, 77, 0.7)',
     fontSize: 11,
+    marginTop: 2,
   },
   btnActionCancel: {
     padding: 12,
@@ -882,6 +1019,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  // ── Modal puntos ganados ──
+  puntosGrandText: {
+    color: '#FFD166',
+    fontSize: 42,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -1,
+  },
+  puntosPenalidadText: {
+    color: '#FF4D4D',
+    fontSize: 42,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -1,
+  },
+
+  // ── Visor imagen ──
   visorOverlay: {
     flex: 1,
     backgroundColor: '#000',
