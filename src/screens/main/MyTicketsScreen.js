@@ -466,6 +466,7 @@ export default function MyTicketsScreen() {
               conversacionData: {
                 id: convSnap.id,
                 nombre: otherUser?.nombre || 'Usuario',
+                fotoPerfil: otherUser?.fotoPerfil || null,
                 ...convoData,
               },
             },
@@ -492,6 +493,7 @@ export default function MyTicketsScreen() {
             conversacionData: {
               id: docSnap.id,
               nombre: otherUser?.nombre || 'Usuario',
+              fotoPerfil: otherUser?.fotoPerfil || null,
               ...convoData,
             },
           },
