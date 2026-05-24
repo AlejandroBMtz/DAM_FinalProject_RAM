@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Image, StatusBar, Modal, Platform, } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Image, StatusBar, Modal, Platform, } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db } from '../../services/firebaseConfig';
@@ -34,6 +34,37 @@ export default function EditProfileScreen({ navigation }) {
   const [modalCarrera, setModalCarrera] = useState(false);
   const [modalSemestre, setModalSemestre] = useState(false);
 
+  // Modal de feedback (exito / error / validacion)
+  const [feedbackModal, setFeedbackModal] = useState({
+    visible: false,
+    type: 'success',   // 'success' | 'error'
+    title: '',
+    subtitle: '',
+    autoClose: false,
+  });
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const showFeedback = ({ type, title, subtitle, autoClose = false, onClose }) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setFeedbackModal({ visible: true, type, title, subtitle, autoClose });
+    if (autoClose) {
+      timerRef.current = setTimeout(() => {
+        setFeedbackModal((prev) => ({ ...prev, visible: false }));
+        if (onClose) onClose();
+      }, 2000);
+    }
+  };
+
+  const closeFeedback = () => {
+    setFeedbackModal((prev) => ({ ...prev, visible: false }));
+  };
+
   // Load data
   useEffect(() => {
     const fetch = async () => {
@@ -62,7 +93,11 @@ export default function EditProfileScreen({ navigation }) {
     (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar tu foto.');
+        showFeedback({
+          type: 'error',
+          title: 'Permiso requerido',
+          subtitle: 'Necesitamos acceso a tu galería para cambiar tu foto.',
+        });
       }
     })();
   }, []);
@@ -80,11 +115,14 @@ export default function EditProfileScreen({ navigation }) {
         setPhotoUrl(result.assets[0].uri);
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo seleccionar la imagen.');
+      showFeedback({
+        type: 'error',
+        title: 'Error',
+        subtitle: 'No se pudo seleccionar la imagen.',
+      });
     }
   };
 
-  // Skills toggle
   const toggleSkill = (skill) => {
     setHabilidades((prev) =>
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
@@ -94,30 +132,41 @@ export default function EditProfileScreen({ navigation }) {
   // Save
   const handleSave = async () => {
     if (!nombre.trim()) {
-      Alert.alert('Campo requerido', 'El nombre no puede estar vacío.');
+      showFeedback({
+        type: 'error',
+        title: i18next.t('error.atencion'),
+        subtitle: 'El nombre no puede estar vacío.',
+      });
       return;
     }
     if (!carrera) {
-      Alert.alert('Campo requerido', 'Por favor selecciona tu carrera.');
+      showFeedback({
+        type: 'error',
+        title: i18next.t('error.atencion'),
+        subtitle: 'Por favor selecciona tu carrera.',
+      });
       return;
     }
     if (!semestre) {
-      Alert.alert('Campo requerido', 'Por favor selecciona tu semestre.');
+      showFeedback({
+        type: 'error',
+        title: i18next.t('error.atencion'),
+        subtitle: 'Por favor selecciona tu semestre.',
+      });
       return;
     }
     if (habilidades.length === 0) {
-      Alert.alert('Campo requerido', 'Selecciona al menos una habilidad.');
+      showFeedback({
+        type: 'error',
+        title: i18next.t('error.atencion'),
+        subtitle: 'Selecciona al menos una habilidad.',
+      });
       return;
     }
 
     setSaving(true);
     try {
-      const updateData = {
-        nombre: nombre.trim(),
-        carrera,
-        semestre,
-        habilidades,
-      };
+      const updateData = { nombre: nombre.trim(), carrera, semestre, habilidades };
 
       if (selectedImage) {
         const url = await uploadImageToCloudinary(selectedImage.uri);
@@ -127,12 +176,21 @@ export default function EditProfileScreen({ navigation }) {
       }
 
       await updateDoc(doc(db, 'users', auth.currentUser.uid), updateData);
-      Alert.alert('¡Listo!', 'Tu perfil fue actualizado correctamente.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+
+      showFeedback({
+        type: 'success',
+        title: i18next.t('settings.languageUpdatedTitle'),
+        subtitle: i18next.t('settings.languageUpdatedSuccess'),
+        autoClose: true,
+        onClose: () => navigation.goBack(),
+      });
     } catch (e) {
-      Alert.alert('Error', 'No se pudo guardar el perfil. Intenta de nuevo.');
       console.log(e);
+      showFeedback({
+        type: 'error',
+        title: 'Error',
+        subtitle: 'No se pudo guardar el perfil. Intenta de nuevo.',
+      });
     } finally {
       setSaving(false);
     }
@@ -150,7 +208,7 @@ export default function EditProfileScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/*  HEADER  */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="chevron-left" size={22} color="#9CA3AF" />
@@ -162,7 +220,7 @@ export default function EditProfileScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/*  FOTO  */}
+        {/* FOTO */}
         <View style={styles.photoSection}>
           <TouchableOpacity style={styles.photoWrapper} onPress={handlePickImage} activeOpacity={0.8}>
             {photoUrl ? (
@@ -179,7 +237,7 @@ export default function EditProfileScreen({ navigation }) {
           <Text style={styles.photoHint}>{i18next.t("profile.edit.foto")}</Text>
         </View>
 
-        {/*  NOMBRE  */}
+        {/* NOMBRE */}
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>{i18next.t("profile.edit.nombre")}</Text>
           <View style={styles.inputRow}>
@@ -195,7 +253,7 @@ export default function EditProfileScreen({ navigation }) {
           </View>
         </View>
 
-        {/*  CARRERA  */}
+        {/* CARRERA */}
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>{i18next.t("profile.edit.carrera")}</Text>
           <TouchableOpacity style={styles.selector} onPress={() => setModalCarrera(true)} activeOpacity={0.7}>
@@ -207,7 +265,7 @@ export default function EditProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* SEMESTRE  */}
+        {/* SEMESTRE */}
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>{i18next.t("profile.edit.semestre")}</Text>
           <TouchableOpacity style={styles.selector} onPress={() => setModalSemestre(true)} activeOpacity={0.7}>
@@ -281,7 +339,7 @@ export default function EditProfileScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/*  MODAL SEMESTRE  */}
+      {/* MODAL SEMESTRE */}
       <Modal visible={modalSemestre} transparent animationType="slide" onRequestClose={() => setModalSemestre(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, { maxHeight: '55%' }]}>
@@ -304,23 +362,45 @@ export default function EditProfileScreen({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* MODAL FEEDBACk */}
+      <Modal visible={feedbackModal.visible} transparent animationType="fade">
+        <View style={styles.feedbackOverlay}>
+          <View style={styles.feedbackContent}>
+            <View style={styles.feedbackIconWrap}>
+              {feedbackModal.type === 'success' ? (
+                <Ionicons name="checkmark-circle" size={60} color="#4ADE80" />
+              ) : (
+                <Ionicons name="close-circle" size={60} color="#EF4444" />
+              )}
+            </View>
+            <Text style={styles.feedbackTitle}>{feedbackModal.title}</Text>
+            <Text style={styles.feedbackSubtitle}>{feedbackModal.subtitle}</Text>
+
+            {/* Boton OK solo en modales que no se cierran solos */}
+            {!feedbackModal.autoClose && (
+              <TouchableOpacity style={styles.feedbackBtn} onPress={closeFeedback} activeOpacity={0.8}>
+                <Text style={styles.feedbackBtnText}>{i18next.t('ok')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#0B0D14' 
+  container: {
+    flex: 1,
+    backgroundColor: '#0B0D14'
   },
-  center: { 
-    flex: 1, 
-    justifyContent: 'center', 
+  center: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center', 
-    backgroundColor: '#0B0D14' 
+    backgroundColor: '#0B0D14',
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -345,233 +425,234 @@ const styles = StyleSheet.create({
     fontSize: 17, 
     fontWeight: '700' 
   },
-
-  scroll: { 
+  scroll: {
     paddingHorizontal: 20, 
-    paddingTop: 28 
+    paddingTop: 28
   },
-
-  // Photo
-  photoSection: { 
-    alignItems: 'center', 
-    marginBottom: 32 
+  photoSection: {
+    alignItems: 'center',
+    marginBottom: 32
   },
-  photoWrapper: { 
-    position: 'relative' 
+  photoWrapper: {
+    position: 'relative'
   },
-  photo: { 
+  photo: {
     width: 140,
-    height: 140, 
-    borderRadius: 70, 
-    borderWidth: 2.5, 
-    borderColor: '#4F46E5' 
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 2.5,
+    borderColor: '#4F46E5'
   },
   photoPlaceholder: {
-    width: 140, 
-    height: 140, 
+    width: 140,
+    height: 140,
     borderRadius: 70,
-    backgroundColor: '#111827', 
-    borderWidth: 2, 
+    backgroundColor: '#111827',
+    borderWidth: 2,
     borderColor: '#1F2937',
-    justifyContent: 'center', 
+    justifyContent: 'center',
     alignItems: 'center',
   },
   photoOverlay: {
-    position: 'absolute', 
-    bottom: 2, 
-    right: 2,
-    width: 30, 
-    height: 30, 
+    position: 'absolute',
+    bottom: 2, right: 2,
+    width: 30, height: 30,
     borderRadius: 15,
     backgroundColor: '#4F46E5',
-    justifyContent: 'center', 
+    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2, 
+    borderWidth: 2,
     borderColor: '#0B0D14',
   },
-  photoHint: { 
-    color: '#6B7280', 
-    fontSize: 12, 
-    marginTop: 10 
+  photoHint: {
+    color: '#6B7280',
+    fontSize: 12,
+    marginTop: 10
   },
 
-  // Fields
-  fieldGroup: { 
-    marginBottom: 22 
+  fieldGroup: {
+    marginBottom: 22
   },
   fieldLabel: {
-    color: '#4B5563', 
-    fontSize: 11, 
+    color: '#4B5563',
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.2, 
-    marginBottom: 8, 
+    letterSpacing: 1.2,
+    marginBottom: 8,
     marginLeft: 2,
   },
-  fieldHint: { 
-    color: '#6B7280', 
-    fontSize: 12, 
-    marginBottom: 10, 
-    marginLeft: 2 
+  fieldHint: {
+    color: '#6B7280',
+    fontSize: 12,
+    marginBottom: 10,
+    marginLeft: 2
   },
-
   inputRow: {
-    flexDirection: 'row', 
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827', 
+    backgroundColor: '#111827',
     borderRadius: 12,
-    borderWidth: 1, 
-    borderColor: '#1F2937', 
+    borderWidth: 1,
+    borderColor: '#1F2937',
     paddingHorizontal: 14,
   },
-  inputIcon: { 
-    marginRight: 10 
+  inputIcon: {
+    marginRight: 10
   },
-  input: { 
-    flex: 1, 
-    color: '#FFFFFF', 
-    fontSize: 15, 
-    paddingVertical: 14 
+  input: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 15,
+    paddingVertical: 14
   },
-
   selector: {
     flexDirection: 'row', 
     alignItems: 'center',
     backgroundColor: '#111827', 
     borderRadius: 12,
-    borderWidth: 1, 
+    borderWidth: 1,
     borderColor: '#1F2937',
-    paddingHorizontal: 14, 
+    paddingHorizontal: 14,
     paddingVertical: 14,
   },
-  selectorText: { 
-    flex: 1, 
+  selectorText: {
+    flex: 1,
     color: '#FFFFFF', 
-    fontSize: 15 
+    fontSize: 15
   },
-  placeholder: { 
-    color: '#4B5563' 
+  placeholder: {
+    color: '#4B5563'
   },
-
-  // Tags
-  tagsGrid: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: 8 
+  tagsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
   },
   tag: {
-    paddingVertical: 8, 
+    paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 20, 
-    borderWidth: 1,
-    borderColor: '#1F2937', 
-    backgroundColor: '#111827',
-  },
-  tagActive: { 
-    borderColor: '#6366F1', 
-    backgroundColor: 'rgba(99,102,241,0.12)' 
-  },
-  tagText: { 
-    color: '#6B7280', 
-    fontSize: 13, 
-    fontWeight: '500' 
-  },
-  tagTextActive: { 
-    color: '#818CF8' 
-  },
-  languageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  languageButton: {
-    flex: 1,
-    paddingVertical: 12,
-    marginRight: 10,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#1F2937',
     backgroundColor: '#111827',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  languageButtonActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+  tagActive: {
+    borderColor: '#6366F1',
+    backgroundColor: 'rgba(99,102,241,0.12)'
   },
-  languageButtonText: {
-    color: '#9CA3AF',
+  tagText: {
+    color: '#6B7280',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500'
   },
-  languageButtonTextActive: {
-    color: '#FFFFFF',
+  tagTextActive: {
+    color: '#818CF8',
   },
-
-  // Save button
   saveBtn: {
-    backgroundColor: '#4F46E5', 
+    backgroundColor: '#4F46E5',
     borderRadius: 14,
-    paddingVertical: 16, 
-    alignItems: 'center', 
+    paddingVertical: 16,
+    alignItems: 'center',
     marginTop: 8,
   },
-  saveBtnDisabled: { 
-    opacity: 0.55 
+  saveBtnDisabled: {
+    opacity: 0.55
   },
-  saveBtnText: { 
-    color: '#FFFFFF', 
-    fontSize: 15, 
-    fontWeight: '700' 
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700'
   },
-
-  // Modal
+  // Modales de seleccion (carrera / semestre)
   modalOverlay: {
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.7)', 
-    justifyContent: 'flex-end',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end'
   },
   modalSheet: {
     backgroundColor: '#111827',
-    borderTopLeftRadius: 24, 
+    borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 20, 
+    paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     maxHeight: '75%',
   },
   dragHandle: {
-    width: 38, 
-    height: 4, 
+    width: 38,
+    height: 4,
     backgroundColor: '#1F2937',
-    borderRadius: 2, 
-    alignSelf: 'center', 
+    borderRadius: 2,
+    alignSelf: 'center',
     marginBottom: 18,
   },
   modalTitle: {
-    color: '#FFFFFF', 
-    fontSize: 16, 
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '700',
-    textAlign: 'center', 
+    textAlign: 'center',
     marginBottom: 12,
   },
   modalOption: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 15, 
-    borderBottomWidth: 1, 
+    paddingVertical: 15,
+    borderBottomWidth: 1,
     borderBottomColor: '#1F2937',
   },
-  modalOptionActive: { 
-    borderBottomColor: '#1F2937' 
+  modalOptionActive: {
+    borderBottomColor: '#1F2937'
   },
-  modalOptionText: { 
-    color: '#9CA3AF', 
-    fontSize: 14, 
-    flex: 1 
+  modalOptionText: {
+    color: '#9CA3AF',
+    fontSize: 14, flex: 1
   },
-  modalOptionTextActive: { 
-    color: '#818CF8', 
-    fontWeight: '600' 
+  modalOptionTextActive: {
+    color: '#818CF8',
+    fontWeight: '600'
+  },
+
+  // Modal de feedback
+  feedbackOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  feedbackContent: {
+    backgroundColor: '#15171E',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1F2229',
+  },
+  feedbackIconWrap: {
+    marginBottom: 15
+  },
+  feedbackTitle: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  feedbackSubtitle: {
+    color: '#8A8F9E',
+    fontSize: 14,
+    textAlign: 'center'
+  },
+  feedbackBtn: {
+    marginTop: 20, 
+    backgroundColor: '#1F2937',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+  },
+  feedbackBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600'
   },
 });
