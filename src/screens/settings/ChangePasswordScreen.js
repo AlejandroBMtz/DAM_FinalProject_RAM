@@ -15,10 +15,10 @@ const getStrength = (pwd) => {
     special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd),
   };
   const passed = Object.values(checks).filter(Boolean).length;
-  if (passed <= 2) return { label: i18next.t("profile.edit.strength.debil"),   color: '#EF4444', width: '25%'  };
-  if (passed <= 3) return { label: i18next.t("profile.edit.strength.regular"),  color: '#F59E0B', width: '55%'  };
-  if (passed <= 4) return { label: i18next.t("profile.edit.strength.buena"),    color: '#3B82F6', width: '78%'  };
-  return            { label: i18next.t("profile.edit.strength.fuerte"),   color: '#10B981', width: '100%' };
+  if (passed <= 2) return { label: i18next.t("profile.edit.strength.debil"), color: '#EF4444', width: '25%'  };
+  if (passed <= 3) return { label: i18next.t("profile.edit.strength.regular"), color: '#F59E0B', width: '55%'  };
+  if (passed <= 4) return { label: i18next.t("profile.edit.strength.buena"), color: '#3B82F6', width: '78%'  };
+  return { label: i18next.t("profile.edit.strength.fuerte"), color: '#10B981', width: '100%' };
 };
 
 const PasswordField = ({ label, value, onChangeText, visible, onToggle, placeholder, error }) => (
@@ -44,12 +44,12 @@ const PasswordField = ({ label, value, onChangeText, visible, onToggle, placehol
 );
 
 export default function ChangePasswordScreen({ navigation }) {
-  const [current, setCurrent]     = useState('');
-  const [next, setNext]           = useState('');
-  const [confirm, setConfirm]     = useState('');
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
 
   const [showCurrent, setShowCurrent] = useState(false);
-  const [showNext, setShowNext]       = useState(false);
+  const [showNext, setShowNext] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const [errors, setErrors] = useState({});
@@ -194,10 +194,10 @@ export default function ChangePasswordScreen({ navigation }) {
           <View style={styles.requirements}>
             {[
               { label: i18next.t("profile.edit.req.caracteres"), ok: next.length >= 8 },
-              { label: i18next.t("profile.edit.req.mayu"),       ok: /[A-Z]/.test(next) },
-              { label: i18next.t("profile.edit.req.minu"),       ok: /[a-z]/.test(next) },
-              { label: i18next.t("profile.edit.req.numero"),     ok: /\d/.test(next) },
-              { label: i18next.t("profile.edit.req.simbolo"),    ok: /[!@#$%^&*(),.?":{}|<>]/.test(next) },
+              { label: i18next.t("profile.edit.req.mayu"), ok: /[A-Z]/.test(next) },
+              { label: i18next.t("profile.edit.req.minu"), ok: /[a-z]/.test(next) },
+              { label: i18next.t("profile.edit.req.numero"), ok: /\d/.test(next) },
+              { label: i18next.t("profile.edit.req.simbolo"), ok: /[!@#$%^&*(),.?":{}|<>]/.test(next) },
             ].map(({ label, ok }) => (
               <View key={label} style={styles.reqItem}>
                 <MaterialCommunityIcons
