@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, StatusBar, Platform, } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, StatusBar, Platform, Modal, } from 'react-native';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { auth } from '../../services/firebaseConfig';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import i18next from '../../services/staticTL';
 
-// Password strength checker
 const getStrength = (pwd) => {
   if (!pwd) return null;
   const checks = {
@@ -16,13 +15,12 @@ const getStrength = (pwd) => {
     special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd),
   };
   const passed = Object.values(checks).filter(Boolean).length;
-  if (passed <= 2) return { label: i18next.t("profile.edit.strength.debil"), color: '#EF4444', width: '25%' };
-  if (passed <= 3) return { label: i18next.t("profile.edit.strength.regular"), color: '#F59E0B', width: '55%' };
-  if (passed <= 4) return { label: i18next.t("profile.edit.strength.buena"), color: '#3B82F6', width: '78%' };
+  if (passed <= 2) return { label: i18next.t("profile.edit.strength.debil"), color: '#EF4444', width: '25%'  };
+  if (passed <= 3) return { label: i18next.t("profile.edit.strength.regular"), color: '#F59E0B', width: '55%'  };
+  if (passed <= 4) return { label: i18next.t("profile.edit.strength.buena"), color: '#3B82F6', width: '78%'  };
   return { label: i18next.t("profile.edit.strength.fuerte"), color: '#10B981', width: '100%' };
 };
 
-// Reusable field
 const PasswordField = ({ label, value, onChangeText, visible, onToggle, placeholder, error }) => (
   <View style={styles.fieldGroup}>
     <Text style={styles.fieldLabel}>{label}</Text>
@@ -38,11 +36,7 @@ const PasswordField = ({ label, value, onChangeText, visible, onToggle, placehol
         autoCapitalize="none"
       />
       <TouchableOpacity onPress={onToggle} style={styles.eyeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <MaterialCommunityIcons
-          name={visible ? 'eye-outline' : 'eye-off-outline'}
-          size={18}
-          color="#6B7280"
-        />
+        <MaterialCommunityIcons name={visible ? 'eye-outline' : 'eye-off-outline'} size={18} color="#6B7280" />
       </TouchableOpacity>
     </View>
     {error && <Text style={styles.errorText}>{error}</Text>}
@@ -61,12 +55,33 @@ export default function ChangePasswordScreen({ navigation }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const [feedbackModal, setFeedbackModal] = useState({
+    visible: false,
+    type: 'success',
+    title: '',
+    subtitle: '',
+    autoClose: false,
+  });
+
+  const timerRef = useRef(null);
   const strength = getStrength(next);
+
+  const showFeedback = ({ type, title, subtitle, autoClose = false, onClose }) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setFeedbackModal({ visible: true, type, title, subtitle, autoClose });
+    if (autoClose) {
+      timerRef.current = setTimeout(() => {
+        setFeedbackModal((prev) => ({ ...prev, visible: false }));
+        if (onClose) onClose();
+      }, 2000);
+    }
+  };
+
+  const closeFeedback = () => setFeedbackModal((prev) => ({ ...prev, visible: false }));
 
   const validate = () => {
     const e = {};
     if (!current.trim()) e.current = i18next.t('profile.edit.error.currentRequired');
-
     if (!next) {
       e.next = i18next.t('profile.edit.error.newRequired');
     } else if (next.length < 8) {
@@ -74,13 +89,11 @@ export default function ChangePasswordScreen({ navigation }) {
     } else if (!/[A-Z]/.test(next) || !/[a-z]/.test(next) || !/\d/.test(next) || !/[!@#$%^&*(),.?":{}|<>]/.test(next)) {
       e.next = i18next.t('profile.edit.error.requirements');
     }
-
     if (!confirm) {
       e.confirm = i18next.t('profile.edit.error.confirmRequired');
     } else if (next !== confirm) {
       e.confirm = i18next.t('profile.edit.error.noMatch');
     }
-
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -95,20 +108,29 @@ export default function ChangePasswordScreen({ navigation }) {
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, next);
 
-      Alert.alert(i18next.t('profile.edit.successPasswordTitle'), i18next.t('profile.edit.successPasswordMessage'), [
-        { text: i18next.t('ok'), onPress: () => navigation.goBack() },
-      ]);
+      showFeedback({
+        type: 'success',
+        title: i18next.t('profile.edit.successPasswordTitle'),
+        subtitle: i18next.t('profile.edit.successPasswordMessage'),
+        autoClose: true,
+        onClose: () => navigation.goBack(),
+      });
     } catch (error) {
       if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         setErrors({ current: i18next.t('profile.edit.error.currentIncorrect') });
       } else if (error.code === 'auth/requires-recent-login') {
-        Alert.alert(
-          i18next.t('profile.edit.error.sessionExpiredTitle'),
-          i18next.t('profile.edit.error.sessionExpiredMessage')
-        );
+        showFeedback({
+          type: 'error',
+          title: i18next.t('profile.edit.error.sessionExpiredTitle'),
+          subtitle: i18next.t('profile.edit.error.sessionExpiredMessage'),
+        });
       } else {
-        Alert.alert(i18next.t('error.genericHeader'), i18next.t('profile.edit.error.generic')); 
         console.log(error);
+        showFeedback({
+          type: 'error',
+          title: i18next.t('error.genericHeader'),
+          subtitle: i18next.t('profile.edit.error.generic'),
+        });
       }
     } finally {
       setSaving(false);
@@ -119,7 +141,7 @@ export default function ChangePasswordScreen({ navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/*  HEADER  */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="chevron-left" size={22} color="#9CA3AF" />
@@ -134,9 +156,7 @@ export default function ChangePasswordScreen({ navigation }) {
         {/* Info card */}
         <View style={styles.infoCard}>
           <MaterialCommunityIcons name="shield-lock-outline" size={22} color="#4F46E5" />
-          <Text style={styles.infoText}>
-            {i18next.t("profile.edit.proteger")}
-          </Text>
+          <Text style={styles.infoText}>{i18next.t("profile.edit.proteger")}</Text>
         </View>
 
         <PasswordField
@@ -161,7 +181,6 @@ export default function ChangePasswordScreen({ navigation }) {
           error={errors.next}
         />
 
-        {/* Strength bar */}
         {next.length > 0 && strength && (
           <View style={styles.strengthWrapper}>
             <View style={styles.strengthBar}>
@@ -171,7 +190,6 @@ export default function ChangePasswordScreen({ navigation }) {
           </View>
         )}
 
-        {/* Requirements */}
         {next.length > 0 && (
           <View style={styles.requirements}>
             {[
@@ -224,14 +242,36 @@ export default function ChangePasswordScreen({ navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* MODAL FEEDBACK */}
+      <Modal visible={feedbackModal.visible} transparent animationType="fade">
+        <View style={styles.feedbackOverlay}>
+          <View style={styles.feedbackContent}>
+            <View style={styles.feedbackIconWrap}>
+              {feedbackModal.type === 'success' ? (
+                <Ionicons name="checkmark-circle" size={60} color="#4ADE80" />
+              ) : (
+                <Ionicons name="close-circle" size={60} color="#EF4444" />
+              )}
+            </View>
+            <Text style={styles.feedbackTitle}>{feedbackModal.title}</Text>
+            <Text style={styles.feedbackSubtitle}>{feedbackModal.subtitle}</Text>
+            {!feedbackModal.autoClose && (
+              <TouchableOpacity style={styles.feedbackBtn} onPress={closeFeedback} activeOpacity={0.8}>
+                <Text style={styles.feedbackBtnText}>{i18next.t('ok')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#0B0D14' 
+  container: {
+    flex: 1,
+    backgroundColor: '#0B0D14'
   },
 
   header: {
@@ -239,31 +279,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 54 : 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#111827',
   },
-  backBtn: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center' },
+  backText: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    marginLeft: 2 },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700'
   },
-  backText: { 
-    color: '#9CA3AF', 
-    fontSize: 14, 
-    marginLeft: 2,
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 24
   },
-  headerTitle: { 
-    color: '#FFFFFF', 
-    fontSize: 17, 
-    fontWeight: '700' 
-  },
-
-  scroll: { 
-    paddingHorizontal: 20, 
-    paddingTop: 24 
-  },
-
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -275,21 +311,19 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     gap: 10,
   },
-  infoText: { 
-    color: '#9CA3AF', 
-    fontSize: 13, 
-    flex: 1, 
-    lineHeight: 18 
+  infoText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18
   },
-
-  divider: { 
-    height: 1, 
-    backgroundColor: '#111827', 
-    marginBottom: 20 
+  divider: {
+    height: 1,
+    backgroundColor: '#111827',
+    marginBottom: 20
   },
-
-  fieldGroup: { 
-    marginBottom: 18 
+  fieldGroup: {
+    marginBottom: 18
   },
   fieldLabel: {
     color: '#4B5563', 
@@ -300,104 +334,140 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   inputRow: {
-    flexDirection: 'row', 
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111827', 
+    backgroundColor: '#111827',
     borderRadius: 12,
-    borderWidth: 1, 
-    borderColor: '#1F2937', 
+    borderWidth: 1,
+    borderColor: '#1F2937',
     paddingHorizontal: 14,
   },
-  inputRowError: { 
-    borderColor: '#7F1D1D', 
-    backgroundColor: '#150A0A' 
+  inputRowError: {
+    borderColor: '#7F1D1D',
+    backgroundColor: '#150A0A' },
+  icon: {
+    marginRight: 10
   },
-  icon: { 
-    marginRight: 10 
+  input: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 15,
+    paddingVertical: 14
   },
-  input: { 
-    flex: 1, 
-    color: '#FFFFFF', 
-    fontSize: 15, 
-    paddingVertical: 14 
+  eyeBtn: {
+    padding: 4
   },
-  eyeBtn: { 
-    padding: 4 
-  },
-  errorText: { 
-    color: '#EF4444', 
-    fontSize: 12, 
-    marginTop: 5, 
-    marginLeft: 4 
-  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 5,
+    marginLeft: 4 },
 
   strengthWrapper: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
-    marginTop: -8, 
+    marginTop: -8,
     marginBottom: 14,
   },
   strengthBar: {
-    flex: 1, 
+    flex: 1,
     height: 4,
-    backgroundColor: '#1F2937', 
-    borderRadius: 4, 
-    overflow: 'hidden',
+    backgroundColor: '#1F2937',
+    borderRadius: 4,
+    overflow: 'hidden'
   },
-  strengthFill: { 
-    height: '100%', 
-    borderRadius: 4 
+  strengthFill: {
+    height: '100%',
+    borderRadius: 4
   },
-  strengthLabel: { 
-    fontSize: 12, 
-    fontWeight: '600', 
-    width: 50, 
-    textAlign: 'right' 
+  strengthLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    width: 50,
+    textAlign: 'right'
   },
-
   requirements: {
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 18, 
     backgroundColor: '#0D1017',
-    borderRadius: 10, 
+    borderRadius: 10,
     padding: 12,
   },
-  reqItem: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 4 
+  reqItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
   },
-  reqText: { 
-    color: '#374151', 
-    fontSize: 11 
+  reqText: {
+    color: '#374151',
+    fontSize: 11
   },
-  reqTextOk: { 
-    color: '#6B7280' 
+  reqTextOk: {
+    color: '#6B7280'
   },
-
-  matchText: { 
-    fontSize: 12, 
-    marginTop: -8, 
-    marginBottom: 16, 
+  matchText: {
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 16,
     marginLeft: 4 
   },
 
   saveBtn: {
-    backgroundColor: '#4F46E5', 
+    backgroundColor: '#4F46E5',
     borderRadius: 14,
-    paddingVertical: 16, 
-    alignItems: 'center', 
+    paddingVertical: 16,
+    alignItems: 'center',
     marginTop: 8,
   },
-  saveBtnDisabled: { 
-    opacity: 0.55 
+  saveBtnDisabled: {
+    opacity: 0.55
   },
-  saveBtnText: { 
+  saveBtnText: {
     color: '#FFFFFF',
-    fontSize: 15, 
-    fontWeight: '700' 
+    fontSize: 15,
+    fontWeight: '700'
+  },
+
+  // Modal feedback
+  feedbackOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  feedbackContent: {
+    backgroundColor: '#15171E', borderRadius: 16,
+    padding: 30, alignItems: 'center',
+    borderWidth: 1, borderColor: '#1F2229',
+  },
+  feedbackIconWrap: {
+    marginBottom: 15
+  },
+  feedbackTitle: {
+    color: '#FFF', 
+    fontSize: 20,
+    fontWeight: 'bold', 
+    textAlign: 'center',
+    marginBottom: 8
+  },
+  feedbackSubtitle: {
+    color: '#8A8F9E',
+    fontSize: 14,
+    textAlign: 'center'
+  },
+  feedbackBtn: {
+    marginTop: 20,
+    backgroundColor: '#1F2937',
+    borderRadius: 10,
+    paddingVertical: 10, 
+    paddingHorizontal: 32,
+  },
+  feedbackBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600'
   },
 });
