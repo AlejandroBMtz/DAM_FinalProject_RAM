@@ -229,6 +229,7 @@ i18next.init({
             titulo: "ACCOUNT",
             editar: "Edit personal information",
             cont: "Change password",
+            cont2: "Password",
             idioma: "Language"
           },
           notificaciones: {
@@ -648,6 +649,7 @@ i18next.init({
             titulo: "CUENTA",
             editar: "Editar datos personales",
             cont: "Cambiar contraseña",
+            cont2: "Contraseña",
             idioma: "Idioma"
           },
           notificaciones: {

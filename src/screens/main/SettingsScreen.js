@@ -44,7 +44,7 @@ const SettingsScreen = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   
-  // Estado para el modal Genérico (Info / Error / Éxito)
+  // Estado para el modal Generico (Info / Error / Exito)
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [infoModalConfig, setInfoModalConfig] = useState({ title: '', message: '', type: 'info' });
   
@@ -106,7 +106,7 @@ const SettingsScreen = () => {
     }, [navigation])
   );
 
-  // Función para mostrar mensajes generales (sustituye a Alert.alert)
+  // Funcion para mostrar mensajes generales
   const showInfoModal = (title, message, type = 'info') => {
     setInfoModalConfig({ title, message, type });
     setInfoModalVisible(true);
@@ -126,7 +126,6 @@ const SettingsScreen = () => {
       setLogoutModalVisible(false);
       await signOut(auth);
     } catch (error) {
-      // Reemplazamos el Alert.alert nativo por el modal genérico
       showInfoModal('Error', i18next.t("profile.errorCerrar") || 'No se pudo cerrar sesión', 'error');
     }
   };
@@ -146,20 +145,20 @@ const SettingsScreen = () => {
       // Intentamos reautenticar
       await reauthenticateWithCredential(user, credential);
       
-      // Si pasa la reautenticación, eliminamos
+      // Si pasa la reautenticacion, eliminamos
       await deleteUser(user);
       setDeleteModalVisible(false);
       
     } catch (error) {
-      console.log("Error al eliminar cuenta:", error.code); // Para debug tuyo
+      console.log("Error al eliminar cuenta:", error.code); // Para debug 
       
-      // Evaluamos el código de error de Firebase para dar un mensaje amigable
+      // Evaluamos el codigo de error de Firebase para dar un mensaje amigable
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
         setPasswordError(i18next.t("profile.errorPassIncorrecta") || "La contraseña no es correcta. Inténtalo de nuevo.");
       } else if (error.code === 'auth/too-many-requests') {
         setPasswordError("Demasiados intentos fallidos. Inténtalo más tarde.");
       } else {
-        // Fallback para cualquier otro error (sin mostrar el código raro de Firebase)
+        // Fallback para cualquier otro error
         setPasswordError("Hubo un problema al verificar tu cuenta.");
       }
       
@@ -209,8 +208,6 @@ const SettingsScreen = () => {
             icon="translate"
             label={i18next.t("settings.cuenta.idioma")}
             onPress={() => navigation.navigate('ChangeLanguageScreen')}
-            // Si cambiaste tu lógica de idioma para que pase aquí directamente,
-            // puedes llamar a showInfoModal('Éxito', 'Idioma cambiado', 'info')
           />
         </View>
 
@@ -294,7 +291,7 @@ const SettingsScreen = () => {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* MODAL GENÉRICO (Para Errores, Información o Éxito como el cambio de Idioma) */}
+      {/* MODAL GENERICO (Para Errores, Informacion o Exito como el cambio de Idioma) */}
       <Modal visible={infoModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -324,7 +321,7 @@ const SettingsScreen = () => {
         </View>
       </Modal>
 
-      {/* MODAL CERRAR SESIÓN */}
+      {/* MODAL CERRAR SESION */}
       <Modal visible={logoutModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -359,7 +356,7 @@ const SettingsScreen = () => {
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.modalInput, passwordError ? styles.modalInputError : null]}
-                placeholder={i18next.t("settings.cuenta.cont") || "Contraseña"}
+                placeholder={i18next.t("settings.cuenta.cont2") || "Contraseña"}
                 placeholderTextColor="#6B7280"
                 secureTextEntry
                 value={password}
