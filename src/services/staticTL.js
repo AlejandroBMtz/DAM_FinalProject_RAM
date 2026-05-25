@@ -393,7 +393,8 @@ i18next.init({
           match: {
             titulo: "A request that matches your skills",
             desc: "Someone needs help with: {{tags}}"
-          }
+          },
+          selected:"{{numero}} selected"
         },
         skills: {
           programming: 'Programming',
@@ -813,7 +814,8 @@ i18next.init({
           match: {
             titulo: "Ticket que coincide con tus habilidades",
             desc: "Alguien necesita ayuda con: {{tags}}"
-          }
+          },
+          selected:"{{numero}} seleccionada"
         },
         skills: {
           programming: 'Programación',
