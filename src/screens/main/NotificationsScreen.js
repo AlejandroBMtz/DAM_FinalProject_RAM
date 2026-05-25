@@ -150,7 +150,7 @@ export default function NotificationsScreen() {
                 <Ionicons name="close" size={20} color="#8A8F9E" />
               </View>
               <Text style={styles.backButtonText}>
-                {selectedIds.size} seleccionada{selectedIds.size !== 1 ? 's' : ''}
+              {i18next.t('notif.selected', { numero: selectedIds.size })}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleDeleteSelected} style={styles.deleteBtn} activeOpacity={0.75}>

@@ -11,7 +11,7 @@ import { getAllSkillNames } from '../../utils/tagsList';
 const CARRERAS = [
   i18next.t("profile.carrera.li"),
   i18next.t("profile.carrera.lati"),
-  i18next.t("profile.carrera.sofli"),
+  i18next.t("profile.carrera.sof"),
   i18next.t("profile.carrera.ic"),
   i18next.t("profile.carrera.itr"),
   i18next.t("profile.carrera.cad"),
