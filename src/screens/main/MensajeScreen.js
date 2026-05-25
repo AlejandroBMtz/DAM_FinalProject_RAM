@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, StatusBar, ScrollView, ImageBackground, Image, Keyboard, Animated, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, TextInput, Platform, StatusBar, ScrollView, ImageBackground, Image, Keyboard, Modal, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDocs, deleteDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDoc, updateDoc, increment, } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
 import { otorgarPuntosResolucion, penalizarAbandono } from '../../utils/points';
@@ -11,30 +11,28 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
 import i18next from '../../services/staticTL';
 
-const FEEDBACK = [
-  "Paciente", "Claro", "Rápido", "Conoce el tema", "Amable"
+const FEEDBACK_TAGS = ['Paciente', 'Claro', 'Rápido', 'Conoce el tema', 'Amable'];
+
+// Motivos de reporte especificos para el chat
+const REPORT_REASONS_CHAT = [
+  { id: 1, icon: '😤', label: 'Actitud grosera o irrespetuosa' },
+  { id: 2, icon: '💰', label: 'Intentó cobrar por la ayuda' },
+  { id: 3, icon: '🚫', label: 'No se presentó a la sesión acordada' },
+  { id: 4, icon: '🖼️', label: 'Envió contenido inapropiado' },
+  { id: 5, icon: '⚠️', label: 'Otro motivo' },
 ];
 
-// Hook: mide la altura real del teclado
 function useKeyboardHeight() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
     const onShow = (e) => setKeyboardHeight(e.endCoordinates.height);
     const onHide = () => setKeyboardHeight(0);
-
     const subShow = Keyboard.addListener(showEvent, onShow);
     const subHide = Keyboard.addListener(hideEvent, onHide);
-
-    return () => {
-      subShow.remove();
-      subHide.remove();
-    };
+    return () => { subShow.remove(); subHide.remove(); };
   }, []);
-
   return keyboardHeight;
 }
 
@@ -48,299 +46,185 @@ export default function MensajeScreen() {
   const [loading, setLoading] = useState(true);
   const keyboardHeight = useKeyboardHeight();
 
-  // Estados de Modales
-  const [modalVisible, setModalVisible] = useState(false);         // Modal de Calificación
-  const [cancelModalVisible, setCancelModalVisible] = useState(false); // Modal Cancelar/Abandonar 
-  const [abandonarModalVisible, setAbandonarModalVisible] = useState(false); // Modal Abandonar
-  const [terminarModalVisible, setTerminarModalVisible] = useState(false); // Modal Terminar
+  // Modales
+  const [ratingModal, setRatingModal] = useState(false); // Calificacion (solicitante)
+  const [cancelModal, setCancelModal] = useState(false); // Cancelar/Abandonar (ayudante)
+  const [terminarModal, setTerminarModal] = useState(false); // Confirmar terminar (solicitante)
+  const [reportModal, setReportModal] = useState(false); // Reporte de conducta
+  const [puntosModal, setPuntosModal] = useState(false); // Puntos ganados/perdidos
   const [imagenVisor, setImagenVisor] = useState(null);
 
-  // Modal de puntos obtenidos
-  const [puntosModalVisible, setPuntosModalVisible] = useState(false);
-  const [puntosGanados, setPuntosGanados] = useState(0);
-
+  //Rating state
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
+  const [puntosGanados, setPuntosGanados] = useState(0);
 
+  //Reporte state 
+  const [selectedReportReason, setSelectedReportReason] = useState(null);
+  const [reportDetails, setReportDetails] = useState('');
+  const [sendingReport, setSendingReport] = useState(false);
+
+  // conversacion
   const conversacionData = route.params?.conversacionData;
   const title = route.params?.nombre || conversacionData?.nombre || 'Usuario';
   const fotoUrl = conversacionData?.fotoPerfil || conversacionData?.fotoUrl;
   const currentUid = auth.currentUser?.uid;
-  const otherUid = conversacionData?.solicitante === currentUid ? conversacionData?.ayudante : conversacionData?.solicitante;
+  const otherUid = conversacionData?.solicitante === currentUid
+    ? conversacionData?.ayudante
+    : conversacionData?.solicitante;
+  const esAyudante = conversacionData?.ayudante === currentUid;
   const typingKey = `typing_${currentUid}`;
   const otherTypingKey = `typing_${otherUid}`;
-  const esAyudante = conversacionData?.ayudante === currentUid;
 
   const [otherTyping, setOtherTyping] = useState(false);
   const [otherOnline, setOtherOnline] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
 
+  // Typing
   const setTypingStatus = useCallback(async (value) => {
     if (!conversacionData?.id || !currentUid) return;
     try {
-      await updateDoc(doc(db, 'conversaciones', conversacionData.id), {
-        [typingKey]: value,
-      });
-    } catch (error) {
-      console.log('Error actualizando typing status:', error);
-    }
+      await updateDoc(doc(db, 'conversaciones', conversacionData.id), { [typingKey]: value });
+    } catch (e) { console.log('Error typing:', e); }
   }, [conversacionData?.id, currentUid, typingKey]);
 
+  const clearTypingStatus = useCallback(async () => {
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    setIsTyping(false);
+    await setTypingStatus(false);
+  }, [setTypingStatus]);
+
+  const handleTypingChange = (text) => {
+    setMessage(text);
+    if (!conversacionData?.id || !currentUid) return;
+    if (text.trim().length === 0) {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (isTyping) { setIsTyping(false); setTypingStatus(false); }
+      return;
+    }
+    if (!isTyping) { setIsTyping(true); setTypingStatus(true); }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => { setIsTyping(false); setTypingStatus(false); }, 1500);
+  };
+
+  // Message status
   const getMessageStatusIcon = (status) => {
-    const normalized = status || 'sent';
-    if (normalized === 'read') {
-      return { name: 'checkmark-done-circle', color: '#4ADE80' };
-    }
-    if (normalized === 'delivered') {
-      return { name: 'checkmark-done', color: '#A78BFA' };
-    }
+    const s = status || 'sent';
+    if (s === 'read') return { name: 'checkmark-done-circle', color: '#4ADE80' };
+    if (s === 'delivered') return { name: 'checkmark-done', color: '#A78BFA' };
     return { name: 'ellipse-outline', color: '#9CA3AF' };
   };
 
   const markIncomingMessagesDelivered = async (messages) => {
     if (!messages?.length) return;
-    try {
-      await Promise.all(messages.map((msg) =>
-        updateDoc(doc(db, 'mensajes', msg.id), { status: 'delivered' })
-      ));
-    } catch (error) {
-      console.log('Error marcando mensajes como entregados:', error);
-    }
+    await Promise.all(messages.map((m) => updateDoc(doc(db, 'mensajes', m.id), { status: 'delivered' })));
   };
 
   const markIncomingMessagesRead = async (messages) => {
     if (!messages?.length) return;
-    try {
-      await Promise.all(messages.map((msg) =>
-        updateDoc(doc(db, 'mensajes', msg.id), { status: 'read' })
-      ));
-    } catch (error) {
-      console.log('Error marcando mensajes como leídos:', error);
-    }
-  };
-
-  const handleTypingChange = (text) => {
-    setMessage(text);
-    if (!conversacionData?.id || !currentUid) return;
-
-    if (text.trim().length === 0) {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      if (isTyping) {
-        setIsTyping(false);
-        setTypingStatus(false);
-      }
-      return;
-    }
-
-    if (!isTyping) {
-      setIsTyping(true);
-      setTypingStatus(true);
-    }
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-      setTypingStatus(false);
-    }, 1500);
-  };
-
-  const clearTypingStatus = useCallback(async () => {
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    setIsTyping(false);
-    await setTypingStatus(false);
-  }, [setTypingStatus]);
-
-  const toggleTag = (tag) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((item) => item !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
+    await Promise.all(messages.map((m) => updateDoc(doc(db, 'mensajes', m.id), { status: 'read' })));
   };
 
   const marcarComoLeido = useCallback(async () => {
-    const convoUid = conversacionData?.id;
-    const currentUid = auth.currentUser?.uid;
-    if (!convoUid || !currentUid) return;
+    if (!conversacionData?.id || !currentUid) return;
     try {
-      const noLeidosKey = `noLeidos_${currentUid}`;
-      await updateDoc(doc(db, 'conversaciones', convoUid), { [noLeidosKey]: 0 });
-    } catch (error) {
-      console.log('Error al marcar como leído:', error);
-    }
+      await updateDoc(doc(db, 'conversaciones', conversacionData.id), {
+        [`noLeidos_${currentUid}`]: 0,
+      });
+    } catch (e) { console.log('Error marcar leído:', e); }
   }, [conversacionData?.id]);
 
-  useFocusEffect(
-    useCallback(() => {
-      marcarComoLeido();
-      return () => {
-        clearTypingStatus();
-      };
-    }, [marcarComoLeido, clearTypingStatus])
-  );
-
-  useEffect(() => {
-    if (!conversacionData?.id || !otherUid) return;
-    const convoRef = doc(db, 'conversaciones', conversacionData.id);
-    const unsubscribe = onSnapshot(convoRef, (snapshot) => {
-      const data = snapshot.data();
-      setOtherTyping(!!data?.[otherTypingKey]);
-    });
-    return () => unsubscribe();
-  }, [conversacionData?.id, otherUid, otherTypingKey]);
-
-  useEffect(() => {
-    if (!otherUid) return;
-    const userRef = doc(db, 'users', otherUid);
-    const unsubscribe = onSnapshot(userRef, (snapshot) => {
-      const data = snapshot.data();
-      setOtherOnline(!!data?.online);
-    });
-    return () => unsubscribe();
-  }, [otherUid]);
+  useFocusEffect(useCallback(() => {
+    marcarComoLeido();
+    return () => { clearTypingStatus(); };
+  }, [marcarComoLeido, clearTypingStatus]));
 
   useEffect(() => {
     return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       clearTypingStatus();
     };
   }, [conversacionData?.id, currentUid]);
 
-  // Finalización con calificación y puntos
+  // Listeners Firestore
+  useEffect(() => {
+    if (!conversacionData?.id || !otherUid) return;
+    return onSnapshot(doc(db, 'conversaciones', conversacionData.id), (snap) => {
+      setOtherTyping(!!snap.data()?.[otherTypingKey]);
+    });
+  }, [conversacionData?.id, otherUid, otherTypingKey]);
 
-  const performTermination = async () => {
+  useEffect(() => {
+    if (!otherUid) return;
+    return onSnapshot(doc(db, 'users', otherUid), (snap) => {
+      setOtherOnline(!!snap.data()?.online);
+    });
+  }, [otherUid]);
+
+  useEffect(() => {
     const convoUid = conversacionData?.id;
-    const solicitudId = conversacionData?.solicitudId;
-    if (!convoUid || !solicitudId) return;
-
-    try {
-      const ayudante = conversacionData?.ayudante;
-      const currentUid = auth.currentUser.uid;
-
-      // Guardar valoracion
-      await addDoc(collection(db, 'valoraciones'), {
-        solicitudId,
-        de: currentUid,
-        para: ayudante,
-        estrellas: rating,
-        comentario: feedback,
-        etiquetas: selectedTags,
-        fecha: new Date().toISOString()
-      });
-
-      // Actualizar promedio del ayudante
-      const userSnap = await getDoc(doc(db, 'users', ayudante));
-      const userData = userSnap.data();
-      const oldRating = userData.rated || 0;
-      const oldHelpGiven = userData.helpGiven || 0;
-      const newRating = ((oldRating * oldHelpGiven) + rating) / (oldHelpGiven + 1);
-
-      await updateDoc(doc(db, 'users', ayudante), {
-        rated: newRating,
-        helpGiven: oldHelpGiven + 1
-      });
-
-      // Obtener prioridad del ticket para calcular puntos
-      let prioridad = 3; // Baja por defecto
-      try {
-        const solicitudSnap = await getDoc(doc(db, 'solicitudes', solicitudId));
-        if (solicitudSnap.exists()) {
-          prioridad = solicitudSnap.data().prioridad || 3;
-        }
-      } catch (_) {}
-
-      // Obtener fecha de inicio de la conversacion para speed bonus
-      const fechaInicio = conversacionData?.fechaCreacion || null;
-
-      // Otorgar puntos al ayudante segun prioridad + calificaciun
-      const puntosOtorgados = await otorgarPuntosResolucion(
-        ayudante,
-        prioridad,
-        rating,
-        fechaInicio
-      );
-
-      // Evaluar insignias del ayudante
-      try { await evaluateBadges(); } catch (_) {}
-
-      // Marcar como completada
-      await updateDoc(doc(db, 'conversaciones', convoUid), {
-        estado: 'completada',
-        fechaActualizacion: new Date().toISOString()
-      });
-      await updateDoc(doc(db, 'solicitudes', solicitudId), {
-        estado: 'resuelto',
-        fechaActualizacion: new Date().toISOString()
-      });
-
-      // Mostrar modal de puntos si el ayudante es el usuario actual
-      if (ayudante === currentUid && puntosOtorgados !== 0) {
-        setPuntosGanados(puntosOtorgados);
-        setModalVisible(false);
-        setPuntosModalVisible(true);
-      } else {
-        setModalVisible(false);
-        navigation.popToTop();
+    if (!convoUid || !currentUid) return;
+    const q = query(
+      collection(db, 'mensajes'),
+      where('idConversacion', '==', convoUid),
+      orderBy('tiempoEnviado')
+    );
+    return onSnapshot(q, async (snapshot) => {
+      const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setMensajes(docs);
+      setLoading(false);
+      const incomingSent = docs.filter((m) => m.idUsuario !== currentUid && m.status === 'sent');
+      const incomingDelivered = docs.filter((m) => m.idUsuario !== currentUid && m.status === 'delivered');
+      if (incomingSent.length > 0) await markIncomingMessagesDelivered(incomingSent);
+      if (incomingSent.length > 0 || incomingDelivered.length > 0) {
+        setTimeout(() => {
+          const toRead = docs.filter((m) => m.idUsuario !== currentUid && ['sent', 'delivered'].includes(m.status));
+          if (toRead.length > 0) markIncomingMessagesRead(toRead);
+        }, 1200);
       }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo finalizar correctamente.');
-    }
-  };
+    });
+  }, [conversacionData?.id, currentUid]);
 
+  useEffect(() => {
+    if (mensajes.length > 0) {
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  }, [mensajes, keyboardHeight]);
+
+  // Send message
   const handleSend = async () => {
     const convoUid = conversacionData?.id;
-    if (message.trim() === '') return;
+    if (!message.trim()) return;
     setLoading(true);
     try {
       await addDoc(collection(db, 'mensajes'), {
         idConversacion: convoUid,
-        idUsuario: auth.currentUser.uid,
+        idUsuario: currentUid,
         texto: message,
         tiempoEnviado: new Date().toISOString(),
         status: 'sent',
       });
-      const currentUid = auth.currentUser.uid;
-      const otherUid = conversacionData.solicitante === currentUid ? conversacionData.ayudante : conversacionData.solicitante;
-      const noLeidosKey = `noLeidos_${otherUid}`;
       await updateDoc(doc(db, 'conversaciones', convoUid), {
         ultimoMensaje: message,
         ultimaActividad: new Date().toISOString(),
-        [noLeidosKey]: increment(1),
+        [`noLeidos_${otherUid}`]: increment(1),
       });
       await setTypingStatus(false);
-    } catch (error) {
-      console.log('Error en Firebase:', error);
-    } finally {
-      setLoading(false);
-      setMessage('');
-    }
+    } catch (e) { console.log('Error send:', e); }
+    finally { setLoading(false); setMessage(''); }
   };
 
   const handlePickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') return Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.');
-
+      if (status !== 'granted') return;
       const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
       if (result.canceled) return;
-
       setLoading(true);
       const imageUrl = await uploadImageToCloudinary(result.assets[0].uri);
       const convoUid = conversacionData?.id;
-      const currentUid = auth.currentUser.uid;
-      const otherUid = conversacionData.solicitante === currentUid ? conversacionData.ayudante : conversacionData.solicitante;
-
       await addDoc(collection(db, 'mensajes'), {
         idConversacion: convoUid,
         idUsuario: currentUid,
@@ -352,127 +236,134 @@ export default function MensajeScreen() {
       await updateDoc(doc(db, 'conversaciones', convoUid), {
         ultimoMensaje: '📷 Foto',
         ultimaActividad: new Date().toISOString(),
-        [`noLeidos_${otherUid}`]: increment(1)
+        [`noLeidos_${otherUid}`]: increment(1),
       });
       await setTypingStatus(false);
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo enviar la imagen.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.log('Error imagen:', e); }
+    finally { setLoading(false); }
   };
 
-  //Acciones Cancelar/Abandonar (Ayudante desde chat)
-
-  const abrirModalCancelar = () => setCancelModalVisible(true);
-
-  // dabandonar y liberar el ticket (queda disponible para otro)
-  // Aplica penalizacion de puntos segun prioridad
+  // ayudantr
   const abandonarYLiberar = async () => {
     try {
-      const ayudanteUid = auth.currentUser.uid;
-
-      // obtener prioridad del ticket
       let prioridad = 3;
       if (conversacionData?.solicitudId) {
-        try {
-          const solSnap = await getDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
-          if (solSnap.exists()) prioridad = solSnap.data().prioridad || 3;
-        } catch (_) {}
+        const snap = await getDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
+        if (snap.exists()) prioridad = snap.data().prioridad || 3;
       }
-
-      // Penalizar puntos
-      await penalizarAbandono(ayudanteUid, prioridad);
-
-      // Liberar ticket
+      await penalizarAbandono(currentUid, prioridad);
       await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
       await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), {
-        estado: 'disponible',
-        ayudante: null,
+        estado: 'disponible', ayudante: null,
       });
-
-      setCancelModalVisible(false);
+      setCancelModal(false);
       navigation.goBack();
-    } catch (error) {
-      console.log('Error al abandonar y liberar:', error);
-      setCancelModalVisible(false);
-      navigation.goBack();
-    }
+    } catch (e) { console.log('Error abandonar:', e); setCancelModal(false); navigation.goBack(); }
   };
 
-  //finalizar como cancelado (cierra el ticket permanentemente)
-  // Tambien aplica penalizacion
   const finalizarComoCancelado = async () => {
     try {
-      const ayudanteUid = auth.currentUser.uid;
-
       let prioridad = 3;
       if (conversacionData?.solicitudId) {
-        try {
-          const solSnap = await getDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
-          if (solSnap.exists()) prioridad = solSnap.data().prioridad || 3;
-        } catch (_) {}
+        const snap = await getDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
+        if (snap.exists()) prioridad = snap.data().prioridad || 3;
       }
-
-      await penalizarAbandono(ayudanteUid, prioridad);
-
+      await penalizarAbandono(currentUid, prioridad);
       await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
       await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), { estado: 'cancelado' });
-
-      setCancelModalVisible(false);
+      setCancelModal(false);
       navigation.goBack();
-    } catch (error) {
-      console.log('Error al finalizar como cancelado:', error);
-      setCancelModalVisible(false);
-      navigation.goBack();
-    }
+    } catch (e) { console.log('Error cancelar:', e); setCancelModal(false); navigation.goBack(); }
   };
 
-  // Terminacion (Solicitante)
-
-  const abrirModalTerminar = () => setTerminarModalVisible(true);
-
+  // Acciones solicitante
   const confirmarTerminacion = () => {
-    setTerminarModalVisible(false);
-    setRating(0);
-    setFeedback('');
-    setSelectedTags([]);
-    setModalVisible(true);
+    setTerminarModal(false);
+    setRating(0); setFeedback(''); setSelectedTags([]);
+    setRatingModal(true);
   };
 
-  useEffect(() => {
+  const performTermination = async () => {
     const convoUid = conversacionData?.id;
-    if (!convoUid || !currentUid) return;
-    const q = query(collection(db, 'mensajes'), where('idConversacion', '==', convoUid), orderBy('tiempoEnviado'));
-    const unsub = onSnapshot(q, async (snapshot) => {
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setMensajes(docs);
-      setLoading(false);
+    const solicitudId = conversacionData?.solicitudId;
+    if (!convoUid || !solicitudId) return;
+    try {
+      const ayudante = conversacionData?.ayudante;
 
-      const incomingSent = docs.filter((msg) => msg.idUsuario !== currentUid && msg.status === 'sent');
-      const incomingDelivered = docs.filter((msg) => msg.idUsuario !== currentUid && msg.status === 'delivered');
+      await addDoc(collection(db, 'valoraciones'), {
+        solicitudId,
+        de: currentUid,
+        para: ayudante,
+        estrellas: rating,
+        comentario: feedback,
+        etiquetas: selectedTags,
+        fecha: new Date().toISOString(),
+      });
 
-      if (incomingSent.length > 0) {
-        await markIncomingMessagesDelivered(incomingSent);
+      const userSnap = await getDoc(doc(db, 'users', ayudante));
+      const ud = userSnap.data();
+      const newRating = ((ud.rated || 0) * (ud.helpGiven || 0) + rating) / ((ud.helpGiven || 0) + 1);
+      await updateDoc(doc(db, 'users', ayudante), { rated: newRating, helpGiven: (ud.helpGiven || 0) + 1 });
+
+      let prioridad = 3;
+      try {
+        const solSnap = await getDoc(doc(db, 'solicitudes', solicitudId));
+        if (solSnap.exists()) prioridad = solSnap.data().prioridad || 3;
+      } catch (_) {}
+
+      const puntosOtorgados = await otorgarPuntosResolucion(
+        ayudante, prioridad, rating, conversacionData?.fechaCreacion || null
+      );
+      try { await evaluateBadges(); } catch (_) {}
+
+      await updateDoc(doc(db, 'conversaciones', convoUid), {
+        estado: 'completada', fechaActualizacion: new Date().toISOString(),
+      });
+      await updateDoc(doc(db, 'solicitudes', solicitudId), {
+        estado: 'resuelto', fechaActualizacion: new Date().toISOString(),
+      });
+
+      if (ayudante === currentUid && puntosOtorgados !== 0) {
+        setPuntosGanados(puntosOtorgados);
+        setRatingModal(false);
+        setPuntosModal(true);
+      } else {
+        setRatingModal(false);
+        navigation.popToTop();
       }
+    } catch (e) { console.log('Error terminar:', e); }
+  };
 
-      if (incomingSent.length > 0 || incomingDelivered.length > 0) {
-        setTimeout(() => {
-          const incomingToRead = docs.filter((msg) => msg.idUsuario !== currentUid && ['sent', 'delivered'].includes(msg.status));
-          if (incomingToRead.length > 0) {
-            markIncomingMessagesRead(incomingToRead);
-          }
-        }, 1200);
+  //Reporte de conducta
+  const openReportModal = () => {
+    setSelectedReportReason(null);
+    setReportDetails('');
+    setReportModal(true);
+  };
+
+  const enviarReporte = async () => {
+    if (!selectedReportReason) return; // el boton ya estara deshabilitado
+    setSendingReport(true);
+    try {
+      const motivoLabel = REPORT_REASONS_CHAT.find((r) => r.id === selectedReportReason)?.label || '';
+      await addDoc(collection(db, 'reportes'), {
+        tipo: 'conducta_chat',
+        conversacionId: conversacionData?.id,
+        solicitudId: conversacionData?.solicitudId,
+        reportadoUserId: otherUid,
+        reportanteUserId: currentUid,
+        motivoId: selectedReportReason,
+        motivoLabel,
+        detalles: reportDetails.trim(),
+        fecha: new Date().toISOString(),
+      });
+      if (otherUid) {
+        await updateDoc(doc(db, 'users', otherUid), { reportes: increment(1) });
       }
-    });
-    return () => unsub();
-  }, [conversacionData?.id, currentUid]);
-
-  useEffect(() => {
-    if (mensajes.length > 0) {
-      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
-    }
-  }, [mensajes, keyboardHeight]);
+      setReportModal(false);
+    } catch (e) { console.log('Error reporte:', e); }
+    finally { setSendingReport(false); }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -490,42 +381,29 @@ export default function MensajeScreen() {
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
           {otherTyping ? (
-            <Text style={styles.statusText}>{i18next.t('mensajes.typing') || 'Escribiendo...'}</Text>
+            <Text style={styles.statusText}>{i18next.t('mensajes.typing')}</Text>
           ) : otherOnline ? (
-            <Text style={styles.statusText}>{i18next.t('mensajes.online') || 'En línea'}</Text>
+            <Text style={styles.statusText}>{i18next.t('mensajes.online')}</Text>
           ) : null}
         </View>
         <TouchableOpacity
           style={styles.terminarBtn}
-          onPress={esAyudante ? abrirModalCancelar : abrirModalTerminar}
+          onPress={esAyudante ? () => setCancelModal(true) : () => setTerminarModal(true)}
         >
-          <Text style={styles.terminarText}>{esAyudante ? i18next.t("cancelar") : i18next.t("terminar")}</Text>
+          <Text style={styles.terminarText}>
+            {esAyudante ? i18next.t('cancelar') : i18next.t('terminar')}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      <ImageBackground
-        source={require('../../../assets/images/FondoChat.png')}
-        style={styles.background}
-        resizeMode="cover"
-      >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
+      {/* CHAT */}
+      <ImageBackground source={require('../../../assets/images/FondoChat.png')} style={styles.background} resizeMode="cover">
+        <ScrollView ref={scrollViewRef} style={styles.scrollView} contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {mensajes.map((msg) => {
             const isMine = msg.idUsuario === currentUid;
-            const statusIcon = getMessageStatusIcon(msg.status);
+            const si = getMessageStatusIcon(msg.status);
             return (
-              <View
-                key={msg.id}
-                style={[
-                  styles.cuerpoMensaje,
-                  isMine ? styles.cuerpoEnviado : styles.cuerpoRecibido
-                ]}
-              >
+              <View key={msg.id} style={[styles.cuerpoMensaje, isMine ? styles.cuerpoEnviado : styles.cuerpoRecibido]}>
                 {msg.tipo === 'imagen' ? (
                   <TouchableOpacity onPress={() => setImagenVisor(msg.imageUrl)} activeOpacity={0.9}>
                     <Image source={{ uri: msg.imageUrl }} style={styles.imagenMensaje} resizeMode="cover" />
@@ -535,7 +413,7 @@ export default function MensajeScreen() {
                 )}
                 {isMine && (
                   <View style={styles.messageStatus}>
-                    <Ionicons name={statusIcon.name} size={14} color={statusIcon.color} />
+                    <Ionicons name={si.name} size={14} color={si.color} />
                   </View>
                 )}
               </View>
@@ -554,7 +432,7 @@ export default function MensajeScreen() {
           style={styles.textInput}
           value={message}
           onChangeText={handleTypingChange}
-          placeholder={i18next.t("mensajes.place")}
+          placeholder={i18next.t('mensajes.place')}
           placeholderTextColor="#8A8F9E"
           multiline
         />
@@ -566,137 +444,231 @@ export default function MensajeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* modal para camcelar o abandonar*/}
-      <Modal visible={cancelModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlayCenter}>
-          <View style={styles.modalContentCenter}>
-            <Ionicons
-              name="warning"
-              size={40}
-              color="#FFD166"
-              style={{ alignSelf: 'center', marginBottom: 15 }}
-            />
-            <Text style={styles.modalTitleCenter}>{i18next.t("mensajes.proceder")}</Text>
-            <Text style={styles.modalSubtitleCenter}>{i18next.t("mensajes.elegir")}</Text>
-
-            {/*Abandonar y liberar */}
-            <TouchableOpacity style={styles.btnActionSecondary} onPress={abandonarYLiberar}>
-              <Text style={styles.btnActionSecondaryText}>{i18next.t("mensajes.abandonar")}</Text>
-              <Text style={styles.btnActionSubText}>{i18next.t("mensajes.libera")}</Text>
-            </TouchableOpacity>
-
-            {/* Cerrar ticket permanentemente */}
-            <TouchableOpacity style={styles.btnActionDestructive} onPress={finalizarComoCancelado}>
-              <Text style={styles.btnActionDestructiveText}>{i18next.t("mensajes.finalizar")}</Text>
-              <Text style={styles.btnActionSubTextDestructive}>{i18next.t("mensajes.cierra")}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.btnActionCancel} onPress={() => setCancelModalVisible(false)}>
-              <Text style={styles.btnActionCancelText}>{i18next.t("mensajes.volver")}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* TERMINAR (Solicitante) ── */}
-      <Modal visible={terminarModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlayCenter}>
-          <View style={styles.modalContentCenter}>
-            <Ionicons
-              name="checkmark-circle"
-              size={48}
-              color="#4ADE80"
-              style={{ alignSelf: 'center', marginBottom: 15 }}
-            />
-            <Text style={styles.modalTitleCenter}>{i18next.t("mensajes.resuelto")}</Text>
-            <Text style={styles.modalSubtitleCenter}>{i18next.t("mensajes.cerrar")}</Text>
-
-            <TouchableOpacity style={styles.btnActionPrimary} onPress={confirmarTerminacion}>
-              <Text style={styles.btnActionPrimaryText}>{i18next.t("mensajes.siTerminar")}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.btnActionCancel} onPress={() => setTerminarModalVisible(false)}>
-              <Text style={styles.btnActionCancelText}>{i18next.t("mensajes.seguir")}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/*CALIFICACION*/}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{i18next.t("mensajes.califica")}</Text>
-
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <TouchableOpacity key={s} onPress={() => setRating(s)}>
-                  <Ionicons name={rating >= s ? 'star' : 'star-outline'} size={40} color="#FFD700" />
+      {/*MODAL: CONFIRMAR TERMINAR (Solicitante) se cierra tocando fuera*/}
+      <Modal visible={terminarModal} transparent animationType="fade" onRequestClose={() => setTerminarModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setTerminarModal(false)}>
+          <View style={styles.overlayCenter}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.cardCenter}>
+                <Ionicons name="checkmark-circle" size={48} color="#4ADE80" style={styles.cardIcon} />
+                <Text style={styles.cardTitle}>{i18next.t('mensajes.resuelto')}</Text>
+                <Text style={styles.cardSubtitle}>{i18next.t('mensajes.cerrar')}</Text>
+                <TouchableOpacity style={styles.btnPrimary} onPress={confirmarTerminacion}>
+                  <Text style={styles.btnPrimaryText}>{i18next.t('mensajes.siTerminar')}</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+                <TouchableOpacity style={styles.btnGhost} onPress={() => setTerminarModal(false)}>
+                  <Text style={styles.btnGhostText}>{i18next.t('mensajes.seguir')}</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
-            <View style={styles.tagsContainer}>
-              {FEEDBACK.map((t, i) => (
+      {/*MODAL: CALIFICACION (Solicitante) se cierra tocando fuera */}
+      <Modal visible={ratingModal} transparent animationType="slide" onRequestClose={() => setRatingModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setRatingModal(false)}>
+          <View style={styles.ratingOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.ratingSheet}>
+                {/* Drag handle */}
+                <View style={styles.dragHandle} />
+
+                <Text style={styles.ratingTitle}>{i18next.t('mensajes.califica')}</Text>
+                <Text style={styles.ratingSubtitle}>¿Cómo fue tu experiencia?</Text>
+
+                {/* Estrellas */}
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <TouchableOpacity key={s} onPress={() => setRating(s)} activeOpacity={0.7}>
+                      <Ionicons
+                        name={rating >= s ? 'star' : 'star-outline'}
+                        size={44}
+                        color="#FFD700"
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Tags de feedback */}
+                <Text style={styles.ratingTagsLabel}>¿QUÉ DESTACAS?</Text>
+                <View style={styles.tagsRow}>
+                  {FEEDBACK_TAGS.map((t, i) => {
+                    const active = selectedTags.includes(t);
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        style={[styles.tagChip, active && styles.tagChipActive]}
+                        onPress={() => setSelectedTags(active ? selectedTags.filter((x) => x !== t) : [...selectedTags, t])}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[styles.tagChipText, active && styles.tagChipTextActive]}>{t}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Comentario */}
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Comentario opcional (ej. Explicó muy bien los pasos)..."
+                  placeholderTextColor="#4B5563"
+                  value={feedback}
+                  onChangeText={setFeedback}
+                  multiline
+                />
+
+                {/* Boton enviar */}
                 <TouchableOpacity
-                  key={i}
-                  style={[styles.tag, selectedTags.includes(t) ? styles.tagSelected : styles.tagUnselected]}
-                  onPress={() => toggleTag(t)}
+                  style={[styles.submitRatingBtn, rating === 0 && styles.submitRatingBtnDisabled]}
+                  onPress={performTermination}
+                  disabled={rating === 0}
+                  activeOpacity={0.85}
                 >
-                  <Text style={[styles.tagText, selectedTags.includes(t) ? styles.tagTextSelected : styles.tagTextUnselected]}>
-                    {t}
+                  <Text style={styles.submitRatingBtnText}>{i18next.t('mensajes.enviar')}</Text>
+                </TouchableOpacity>
+
+                {/* Reporte discreto */}
+                <TouchableOpacity style={styles.reportLinkRow} onPress={() => { setRatingModal(false); openReportModal(); }} activeOpacity={0.7}>
+                  <Text style={styles.reportLinkPre}>¿Algo salió mal? </Text>
+                  <Text style={styles.reportLinkBtn}>Reportar</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* MODAL: CANCELAR / ABANDONAR (Ayudante) se cierra tocando fuera */}
+      <Modal visible={cancelModal} transparent animationType="fade" onRequestClose={() => setCancelModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setCancelModal(false)}>
+          <View style={styles.overlayCenter}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.cardCenter}>
+                <Ionicons name="warning" size={40} color="#FFD166" style={styles.cardIcon} />
+                <Text style={styles.cardTitle}>{i18next.t('mensajes.proceder')}</Text>
+                <Text style={styles.cardSubtitle}>{i18next.t('mensajes.elegir')}</Text>
+
+                <TouchableOpacity style={styles.btnSecondary} onPress={abandonarYLiberar}>
+                  <Text style={styles.btnSecondaryText}>{i18next.t('mensajes.abandonar')}</Text>
+                  <Text style={styles.btnSubText}>{i18next.t('mensajes.libera')}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.btnDestructive} onPress={finalizarComoCancelado}>
+                  <Text style={styles.btnDestructiveText}>{i18next.t('mensajes.finalizar')}</Text>
+                  <Text style={styles.btnSubTextDestructive}>{i18next.t('mensajes.cierra')}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.btnGhost} onPress={() => setCancelModal(false)}>
+                  <Text style={styles.btnGhostText}>{i18next.t('mensajes.volver')}</Text>
+                </TouchableOpacity>
+
+                {/* Reporte discreto para el ayudante */}
+                <TouchableOpacity
+                  style={styles.reportLinkRowCenter}
+                  onPress={() => { setCancelModal(false); openReportModal(); }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="flag-outline" size={13} color="#4B5563" style={{ marginRight: 4 }} />
+                  <Text style={styles.reportLinkPre}>Reportar conducta</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* MODAL: REPORTE DE CONDUCTA (ambos roles) se cierra tocando fuera */}
+      <Modal visible={reportModal} transparent animationType="slide" onRequestClose={() => setReportModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setReportModal(false)}>
+          <View style={styles.reportOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.reportSheet}>
+                <View style={styles.dragHandle} />
+
+                {/* Icono y titulo */}
+                <View style={styles.reportHeaderIcon}>
+                  <Ionicons name="remove-circle" size={36} color="#FF4D4D" />
+                </View>
+                <Text style={styles.reportTitle}>Reportar conducta</Text>
+                <Text style={styles.reportSubtitle}>
+                  ¿Qué tipo de conducta inapropiada ocurrió durante esta sesión?
+                </Text>
+
+                <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
+                  {REPORT_REASONS_CHAT.map((item) => {
+                    const active = selectedReportReason === item.id;
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[styles.reportReasonItem, active && styles.reportReasonItemActive]}
+                        onPress={() => setSelectedReportReason(item.id)}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={styles.reportReasonIcon}>{item.icon}</Text>
+                        <Text style={[styles.reportReasonLabel, active && styles.reportReasonLabelActive]}>
+                          {item.label}
+                        </Text>
+                        {active && (
+                          <Ionicons name="checkmark-circle" size={18} color="#FF4D4D" style={{ marginLeft: 'auto' }} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  <TextInput
+                    style={styles.reportInput}
+                    placeholder="Describe lo que ocurrió..."
+                    placeholderTextColor="#4B5563"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    value={reportDetails}
+                    onChangeText={setReportDetails}
+                  />
+                </ScrollView>
+
+                <TouchableOpacity
+                  style={[styles.reportSubmitBtn, (!selectedReportReason || sendingReport) && styles.reportSubmitBtnDisabled]}
+                  onPress={enviarReporte}
+                  disabled={!selectedReportReason || sendingReport}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.reportSubmitBtnText}>
+                    {sendingReport ? i18next.t('loadingSave') : 'Enviar reporte'}
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
 
-            <TextInput
-              style={styles.feedbackInput}
-              placeholder="Feedback..."
-              placeholderTextColor="#8A8F9E"
-              value={feedback}
-              onChangeText={setFeedback}
-              multiline
-            />
-
-            <TouchableOpacity style={styles.submitButton} onPress={performTermination}>
-              <Text style={styles.submitText}>{i18next.t("mensajes.enviar")}</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.btnGhost} onPress={() => setReportModal(false)}>
+                  <Text style={styles.btnGhostText}>{i18next.t('cancelar')}</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
-      {/*modal de puntos obtenidos (post-calificacion, solo para ayudante) */}
-      <Modal visible={puntosModalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlayCenter}>
-          <View style={styles.modalContentCenter}>
+      {/* MODAL: PUNTOS GANADOS / PENALIZACION Requiere boton OK*/}
+      <Modal visible={puntosModal} transparent animationType="fade">
+        <View style={styles.overlayCenter}>
+          <View style={styles.cardCenter}>
             {puntosGanados > 0 ? (
               <>
-                <Ionicons name="trophy" size={44} color="#FFD166" style={{ alignSelf: 'center', marginBottom: 12 }} />
-                <Text style={styles.modalTitleCenter}>¡Ayuda completada!</Text>
-                <Text style={styles.puntosGrandText}>+{puntosGanados} pts</Text>
-                <Text style={styles.modalSubtitleCenter}>
-                  Gracias por tu apoyo. Los puntos han sido añadidos a tu perfil.
-                </Text>
+                <Ionicons name="trophy" size={44} color="#FFD166" style={styles.cardIcon} />
+                <Text style={styles.cardTitle}>¡Ayuda completada!</Text>
+                <Text style={styles.puntosNum}>{`+${puntosGanados} pts`}</Text>
+                <Text style={styles.cardSubtitle}>Gracias por tu apoyo. Los puntos han sido añadidos a tu perfil.</Text>
               </>
             ) : (
               <>
-                <Ionicons name="alert-circle" size={44} color="#FF4D4D" style={{ alignSelf: 'center', marginBottom: 12 }} />
-                <Text style={styles.modalTitleCenter}>Sesión finalizada</Text>
-                <Text style={styles.puntosPenalidadText}>{puntosGanados} pts</Text>
-                <Text style={styles.modalSubtitleCenter}>
-                  La calificación baja afectó tus puntos esta vez. ¡Ánimo para la próxima!
-                </Text>
+                <Ionicons name="alert-circle" size={44} color="#FF4D4D" style={styles.cardIcon} />
+                <Text style={styles.cardTitle}>Sesión finalizada</Text>
+                <Text style={[styles.puntosNum, { color: '#FF4D4D' }]}>{`${puntosGanados} pts`}</Text>
+                <Text style={styles.cardSubtitle}>La calificación baja afectó tus puntos esta vez. ¡Ánimo para la próxima!</Text>
               </>
             )}
-            <TouchableOpacity
-              style={styles.btnActionPrimary}
-              onPress={() => {
-                setPuntosModalVisible(false);
-                navigation.navigate('Tickets');
-              }}
-            >
-              <Text style={styles.btnActionPrimaryText}>Ver mis tickets</Text>
+            <TouchableOpacity style={styles.btnPrimary} onPress={() => { setPuntosModal(false); navigation.navigate('Tickets'); }}>
+              <Text style={styles.btnPrimaryText}>Ver mis tickets</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -711,7 +683,6 @@ export default function MensajeScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-
     </SafeAreaView>
   );
 }
@@ -721,6 +692,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0B0D14',
   },
+  background: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  listContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    gap: 8,
+  },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -767,18 +752,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  background: {
-    flex: 1,
-    width: '100%',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  listContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    gap: 8,
-  },
+
+  // Messages
   cuerpoMensaje: {
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -811,6 +786,13 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginTop: 6,
   },
+  imagenMensaje: {
+    width: 220,
+    height: 180,
+    borderRadius: 12,
+  },
+
+  // Input bar
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -850,116 +832,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 5,
   },
-  imagenMensaje: {
-    width: 220,
-    height: 180,
-    borderRadius: 12,
-  },
 
-  // ── Modales base ──
-  modalOverlay: {
+  // Overlay / card base
+  overlayCenter: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  modalContent: {
-    backgroundColor: '#161920',
-    padding: 20,
-    borderRadius: 12,
-    width: '90%',
-  },
-  modalTitle: {
-    color: '#FFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  tag: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  tagUnselected: {
-    backgroundColor: '#1C1F2B',
-    borderColor: '#2D3243',
-  },
-  tagSelected: {
-    backgroundColor: 'rgba(108, 99, 255, 0.15)',
-    borderColor: '#6C63FF',
-  },
-  tagText: {
-    fontSize: 13,
-  },
-  tagTextUnselected: {
-    color: '#8A8F9E',
-  },
-  tagTextSelected: {
-    color: '#8B85FF',
-  },
-  feedbackInput: {
-    borderWidth: 1,
-    borderColor: '#2D3243',
-    borderRadius: 8,
-    padding: 12,
-    color: '#FFF',
-    minHeight: 80,
-    marginBottom: 20,
-  },
-  submitButton: {
-    backgroundColor: '#2563EB',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  submitText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-
-  // ── Modales centrados ──
-  modalOverlayCenter: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.80)',
     justifyContent: 'center',
     padding: 24,
   },
-  modalContentCenter: {
+  cardCenter: {
     backgroundColor: '#161920',
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
     borderColor: '#2D3243',
   },
-  modalTitleCenter: {
+  cardIcon: {
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  cardTitle: {
     color: '#FFF',
     fontSize: 20,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 8,
   },
-  modalSubtitleCenter: {
+  cardSubtitle: {
     color: '#8A8F9E',
     textAlign: 'center',
     fontSize: 14,
     marginBottom: 24,
   },
-  btnActionPrimary: {
-    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+
+  // Botones reutilizables
+  btnPrimary: {
+    backgroundColor: 'rgba(37,99,235,0.15)',
     borderWidth: 1,
     borderColor: '#3B82F6',
     padding: 14,
@@ -967,12 +875,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignItems: 'center',
   },
-  btnActionPrimaryText: {
+  btnPrimaryText: {
     color: '#60A5FA',
     fontWeight: 'bold',
     fontSize: 15,
   },
-  btnActionSecondary: {
+  btnSecondary: {
     backgroundColor: '#1C1F2B',
     borderWidth: 1,
     borderColor: '#2D3243',
@@ -981,46 +889,70 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     alignItems: 'center',
   },
-  btnActionSecondaryText: {
+  btnSecondaryText: {
     color: '#FFF',
     fontWeight: 'bold',
     fontSize: 15,
   },
-  btnActionSubText: {
+  btnSubText: {
     color: '#8A8F9E',
     fontSize: 11,
     marginTop: 2,
   },
-  btnActionDestructive: {
-    backgroundColor: 'rgba(255, 77, 77, 0.1)',
+  btnDestructive: {
+    backgroundColor: 'rgba(255,77,77,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 77, 77, 0.3)',
+    borderColor: 'rgba(255,77,77,0.3)',
     padding: 14,
     borderRadius: 10,
     marginBottom: 16,
     alignItems: 'center',
   },
-  btnActionDestructiveText: {
+  btnDestructiveText: {
     color: '#FF4D4D',
     fontWeight: 'bold',
     fontSize: 15,
   },
-  btnActionSubTextDestructive: {
-    color: 'rgba(255, 77, 77, 0.7)',
+  btnSubTextDestructive: {
+    color: 'rgba(255,77,77,0.7)',
     fontSize: 11,
     marginTop: 2,
   },
-  btnActionCancel: {
+  btnGhost: {
     padding: 12,
     alignItems: 'center',
   },
-  btnActionCancelText: {
+  btnGhostText: {
     color: '#8A8F9E',
     fontWeight: '600',
   },
 
-  // ── Modal puntos ganados ──
-  puntosGrandText: {
+  // Enlace de reporte discreto
+  reportLinkRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  reportLinkRowCenter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingVertical: 6,
+  },
+  reportLinkPre: {
+    color: '#4B5563',
+    fontSize: 12,
+  },
+  reportLinkBtn: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+
+  // Modal puntos
+  puntosNum: {
     color: '#FFD166',
     fontSize: 42,
     fontWeight: '900',
@@ -1028,16 +960,196 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: -1,
   },
-  puntosPenalidadText: {
-    color: '#FF4D4D',
-    fontSize: 42,
-    fontWeight: '900',
+
+  // Modal calificacin (bottom sheet)
+  ratingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'flex-end',
+  },
+  ratingSheet: {
+    backgroundColor: '#13151C',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  dragHandle: {
+    width: 38,
+    height: 4,
+    backgroundColor: '#2D3243',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  ratingTitle: {
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -1,
+    marginBottom: 4,
+  },
+  ratingSubtitle: {
+    color: '#6B7280',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 24,
+  },
+  ratingTagsLabel: {
+    color: '#4B5563',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 12,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  tagChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#2D3243',
+    backgroundColor: '#1C1F2B',
+  },
+  tagChipActive: {
+    borderColor: '#6C63FF',
+    backgroundColor: 'rgba(108,99,255,0.15)',
+  },
+  tagChipText: {
+    color: '#8A8F9E',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  tagChipTextActive: {
+    color: '#8B85FF',
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderColor: '#2D3243',
+    borderRadius: 12,
+    padding: 14,
+    color: '#FFF',
+    minHeight: 80,
+    marginBottom: 20,
+    fontSize: 14,
+    backgroundColor: '#1C1F2B',
+  },
+  submitRatingBtn: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  submitRatingBtnDisabled: {
+    opacity: 0.45,
+  },
+  submitRatingBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 
-  // ── Visor imagen ──
+  // Modal reporte conducta (bottom sheet)
+  reportOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'flex-end',
+  },
+  reportSheet: {
+    backgroundColor: '#13151C',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    maxHeight: '88%',
+  },
+  reportHeaderIcon: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  reportTitle: {
+    color: '#FFF',
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  reportSubtitle: {
+    color: '#6B7280',
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  reportReasonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1C1F2B',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#2D3243',
+  },
+  reportReasonItemActive: {
+    borderColor: '#FF4D4D',
+    backgroundColor: 'rgba(255,77,77,0.06)',
+  },
+  reportReasonIcon: {
+    fontSize: 18,
+    marginRight: 12,
+  },
+  reportReasonLabel: {
+    color: '#D1D5DB',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  reportReasonLabelActive: {
+    color: '#FFF',
+  },
+  reportInput: {
+    backgroundColor: '#1C1F2B',
+    color: '#FFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2D3243',
+    padding: 14,
+    marginTop: 8,
+    marginBottom: 16,
+    minHeight: 90,
+    fontSize: 14,
+  },
+  reportSubmitBtn: {
+    backgroundColor: '#FF4D4D',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  reportSubmitBtnDisabled: {
+    opacity: 0.45,
+  },
+  reportSubmitBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  // Visor imagen
   visorOverlay: {
     flex: 1,
     backgroundColor: '#000',
@@ -1054,5 +1166,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20,
     padding: 8,
-  },
+  }
 });
