@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Tex
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { collection, query, where, orderBy, doc, addDoc, setDoc, onSnapshot, getDoc, updateDoc, increment, } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, addDoc, onSnapshot, getDoc, updateDoc, increment, } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
 import { otorgarPuntosResolucion, penalizarAbandono } from '../../utils/points';
@@ -11,15 +11,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
 import i18next from '../../services/staticTL';
 
-const FEEDBACK_TAGS = ['Paciente', 'Claro', 'Rápido', 'Conoce el tema', 'Amable'];
+// Funciones que leen el diccionario en tiempo de render para respetar el idioma activo
+const getFeedbackTags = () =>
+  Object.values(i18next.t('mensajes.feedbackTags', { returnObjects: true }));
 
-// Motivos de reporte especificos para el chat
-const REPORT_REASONS_CHAT = [
-  { id: 1, icon: '😤', label: 'Actitud grosera o irrespetuosa' },
-  { id: 2, icon: '💰', label: 'Intentó cobrar por la ayuda' },
-  { id: 3, icon: '🚫', label: 'No se presentó a la sesión acordada' },
-  { id: 4, icon: '🖼️', label: 'Envió contenido inapropiado' },
-  { id: 5, icon: '⚠️', label: 'Otro motivo' },
+const getReportReasons = () => [
+  { id: 1, icon: '😤', label: i18next.t('mensajes.reportMotivos.actitud') },
+  { id: 2, icon: '💰', label: i18next.t('mensajes.reportMotivos.cobro') },
+  { id: 3, icon: '🚫', label: i18next.t('mensajes.reportMotivos.noPresentó') },
+  { id: 4, icon: '🖼️', label: i18next.t('mensajes.reportMotivos.contenido') },
+  { id: 5, icon: '⚠️', label: i18next.t('mensajes.reportMotivos.otro') },
 ];
 
 function useKeyboardHeight() {
@@ -47,25 +48,25 @@ export default function MensajeScreen() {
   const keyboardHeight = useKeyboardHeight();
 
   // Modales
-  const [ratingModal, setRatingModal] = useState(false); // Calificacion (solicitante)
-  const [cancelModal, setCancelModal] = useState(false); // Cancelar/Abandonar (ayudante)
-  const [terminarModal, setTerminarModal] = useState(false); // Confirmar terminar (solicitante)
-  const [reportModal, setReportModal] = useState(false); // Reporte de conducta
-  const [puntosModal, setPuntosModal] = useState(false); // Puntos ganados/perdidos
+  const [ratingModal, setRatingModal] = useState(false); 
+  const [cancelModal, setCancelModal] = useState(false);
+  const [terminarModal, setTerminarModal] = useState(false);
+  const [reportModal, setReportModal] = useState(false);
+  const [puntosModal, setPuntosModal] = useState(false);
   const [imagenVisor, setImagenVisor] = useState(null);
 
-  //Rating state
+  // Rating state
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [puntosGanados, setPuntosGanados] = useState(0);
 
-  //Reporte state 
+  // Reporte state
   const [selectedReportReason, setSelectedReportReason] = useState(null);
   const [reportDetails, setReportDetails] = useState('');
   const [sendingReport, setSendingReport] = useState(false);
 
-  // conversacion
+  // Conversación
   const conversacionData = route.params?.conversacionData;
   const title = route.params?.nombre || conversacionData?.nombre || 'Usuario';
   const fotoUrl = conversacionData?.fotoPerfil || conversacionData?.fotoUrl;
@@ -82,7 +83,7 @@ export default function MensajeScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
 
-  // Typing
+
   const setTypingStatus = useCallback(async (value) => {
     if (!conversacionData?.id || !currentUid) return;
     try {
@@ -109,7 +110,7 @@ export default function MensajeScreen() {
     typingTimeoutRef.current = setTimeout(() => { setIsTyping(false); setTypingStatus(false); }, 1500);
   };
 
-  // Message status
+  //  Message status
   const getMessageStatusIcon = (status) => {
     const s = status || 'sent';
     if (s === 'read') return { name: 'checkmark-done-circle', color: '#4ADE80' };
@@ -193,7 +194,7 @@ export default function MensajeScreen() {
     }
   }, [mensajes, keyboardHeight]);
 
-  // Send message
+  // Send
   const handleSend = async () => {
     const convoUid = conversacionData?.id;
     if (!message.trim()) return;
@@ -243,7 +244,7 @@ export default function MensajeScreen() {
     finally { setLoading(false); }
   };
 
-  // ayudantr
+  // Acciones ayudante
   const abandonarYLiberar = async () => {
     try {
       let prioridad = 3;
@@ -289,40 +290,30 @@ export default function MensajeScreen() {
     if (!convoUid || !solicitudId) return;
     try {
       const ayudante = conversacionData?.ayudante;
-
       await addDoc(collection(db, 'valoraciones'), {
-        solicitudId,
-        de: currentUid,
-        para: ayudante,
-        estrellas: rating,
-        comentario: feedback,
-        etiquetas: selectedTags,
-        fecha: new Date().toISOString(),
+        solicitudId, de: currentUid, para: ayudante,
+        estrellas: rating, comentario: feedback,
+        etiquetas: selectedTags, fecha: new Date().toISOString(),
       });
-
       const userSnap = await getDoc(doc(db, 'users', ayudante));
       const ud = userSnap.data();
       const newRating = ((ud.rated || 0) * (ud.helpGiven || 0) + rating) / ((ud.helpGiven || 0) + 1);
       await updateDoc(doc(db, 'users', ayudante), { rated: newRating, helpGiven: (ud.helpGiven || 0) + 1 });
-
       let prioridad = 3;
       try {
         const solSnap = await getDoc(doc(db, 'solicitudes', solicitudId));
         if (solSnap.exists()) prioridad = solSnap.data().prioridad || 3;
       } catch (_) {}
-
       const puntosOtorgados = await otorgarPuntosResolucion(
         ayudante, prioridad, rating, conversacionData?.fechaCreacion || null
       );
       try { await evaluateBadges(); } catch (_) {}
-
       await updateDoc(doc(db, 'conversaciones', convoUid), {
         estado: 'completada', fechaActualizacion: new Date().toISOString(),
       });
       await updateDoc(doc(db, 'solicitudes', solicitudId), {
         estado: 'resuelto', fechaActualizacion: new Date().toISOString(),
       });
-
       if (ayudante === currentUid && puntosOtorgados !== 0) {
         setPuntosGanados(puntosOtorgados);
         setRatingModal(false);
@@ -334,7 +325,7 @@ export default function MensajeScreen() {
     } catch (e) { console.log('Error terminar:', e); }
   };
 
-  //Reporte de conducta
+  // Reporte de conducta
   const openReportModal = () => {
     setSelectedReportReason(null);
     setReportDetails('');
@@ -342,10 +333,10 @@ export default function MensajeScreen() {
   };
 
   const enviarReporte = async () => {
-    if (!selectedReportReason) return; // el boton ya estara deshabilitado
+    if (!selectedReportReason) return;
     setSendingReport(true);
     try {
-      const motivoLabel = REPORT_REASONS_CHAT.find((r) => r.id === selectedReportReason)?.label || '';
+      const motivoLabel = getReportReasons().find((r) => r.id === selectedReportReason)?.label || '';
       await addDoc(collection(db, 'reportes'), {
         tipo: 'conducta_chat',
         conversacionId: conversacionData?.id,
@@ -444,7 +435,7 @@ export default function MensajeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/*MODAL: CONFIRMAR TERMINAR (Solicitante) se cierra tocando fuera*/}
+      {/* MODAL: CONFIRMAR TERMINAR (Solicitante)*/}
       <Modal visible={terminarModal} transparent animationType="fade" onRequestClose={() => setTerminarModal(false)}>
         <TouchableWithoutFeedback onPress={() => setTerminarModal(false)}>
           <View style={styles.overlayCenter}>
@@ -465,35 +456,27 @@ export default function MensajeScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/*MODAL: CALIFICACION (Solicitante) se cierra tocando fuera */}
+      {/*MODAL: CALIFICACIÓN (Solicitante) */}
       <Modal visible={ratingModal} transparent animationType="slide" onRequestClose={() => setRatingModal(false)}>
         <TouchableWithoutFeedback onPress={() => setRatingModal(false)}>
           <View style={styles.ratingOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={styles.ratingSheet}>
-                {/* Drag handle */}
                 <View style={styles.dragHandle} />
-
                 <Text style={styles.ratingTitle}>{i18next.t('mensajes.califica')}</Text>
-                <Text style={styles.ratingSubtitle}>¿Cómo fue tu experiencia?</Text>
+                <Text style={styles.ratingSubtitle}>{i18next.t('mensajes.calificaSubtitle')}</Text>
 
-                {/* Estrellas */}
                 <View style={styles.starsRow}>
                   {[1, 2, 3, 4, 5].map((s) => (
                     <TouchableOpacity key={s} onPress={() => setRating(s)} activeOpacity={0.7}>
-                      <Ionicons
-                        name={rating >= s ? 'star' : 'star-outline'}
-                        size={44}
-                        color="#FFD700"
-                      />
+                      <Ionicons name={rating >= s ? 'star' : 'star-outline'} size={44} color="#FFD700" />
                     </TouchableOpacity>
                   ))}
                 </View>
 
-                {/* Tags de feedback */}
-                <Text style={styles.ratingTagsLabel}>¿QUÉ DESTACAS?</Text>
+                <Text style={styles.ratingTagsLabel}>{i18next.t('mensajes.destacas')}</Text>
                 <View style={styles.tagsRow}>
-                  {FEEDBACK_TAGS.map((t, i) => {
+                  {getFeedbackTags().map((t, i) => {
                     const active = selectedTags.includes(t);
                     return (
                       <TouchableOpacity
@@ -508,17 +491,15 @@ export default function MensajeScreen() {
                   })}
                 </View>
 
-                {/* Comentario */}
                 <TextInput
                   style={styles.commentInput}
-                  placeholder="Comentario opcional (ej. Explicó muy bien los pasos)..."
+                  placeholder={i18next.t('mensajes.comentarioPlace')}
                   placeholderTextColor="#4B5563"
                   value={feedback}
                   onChangeText={setFeedback}
                   multiline
                 />
 
-                {/* Boton enviar */}
                 <TouchableOpacity
                   style={[styles.submitRatingBtn, rating === 0 && styles.submitRatingBtnDisabled]}
                   onPress={performTermination}
@@ -528,10 +509,13 @@ export default function MensajeScreen() {
                   <Text style={styles.submitRatingBtnText}>{i18next.t('mensajes.enviar')}</Text>
                 </TouchableOpacity>
 
-                {/* Reporte discreto */}
-                <TouchableOpacity style={styles.reportLinkRow} onPress={() => { setRatingModal(false); openReportModal(); }} activeOpacity={0.7}>
-                  <Text style={styles.reportLinkPre}>¿Algo salió mal? </Text>
-                  <Text style={styles.reportLinkBtn}>Reportar</Text>
+                <TouchableOpacity
+                  style={styles.reportLinkRow}
+                  onPress={() => { setRatingModal(false); openReportModal(); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.reportLinkPre}>{i18next.t('mensajes.algoSalio')}</Text>
+                  <Text style={styles.reportLinkBtn}>{i18next.t('mensajes.reportarLink')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
@@ -539,7 +523,7 @@ export default function MensajeScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* MODAL: CANCELAR / ABANDONAR (Ayudante) se cierra tocando fuera */}
+      {/* MODAL: CANCELAR / ABANDONAR (Ayudante) */}
       <Modal visible={cancelModal} transparent animationType="fade" onRequestClose={() => setCancelModal(false)}>
         <TouchableWithoutFeedback onPress={() => setCancelModal(false)}>
           <View style={styles.overlayCenter}>
@@ -563,14 +547,13 @@ export default function MensajeScreen() {
                   <Text style={styles.btnGhostText}>{i18next.t('mensajes.volver')}</Text>
                 </TouchableOpacity>
 
-                {/* Reporte discreto para el ayudante */}
                 <TouchableOpacity
                   style={styles.reportLinkRowCenter}
                   onPress={() => { setCancelModal(false); openReportModal(); }}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="flag-outline" size={13} color="#4B5563" style={{ marginRight: 4 }} />
-                  <Text style={styles.reportLinkPre}>Reportar conducta</Text>
+                  <Text style={styles.reportLinkPre}>{i18next.t('mensajes.reportarConducta')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
@@ -578,25 +561,21 @@ export default function MensajeScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* MODAL: REPORTE DE CONDUCTA (ambos roles) se cierra tocando fuera */}
+      {/* MODAL: REPORTE DE CONDUCTA (ambos roles) */}
       <Modal visible={reportModal} transparent animationType="slide" onRequestClose={() => setReportModal(false)}>
         <TouchableWithoutFeedback onPress={() => setReportModal(false)}>
           <View style={styles.reportOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={styles.reportSheet}>
                 <View style={styles.dragHandle} />
-
-                {/* Icono y titulo */}
                 <View style={styles.reportHeaderIcon}>
                   <Ionicons name="remove-circle" size={36} color="#FF4D4D" />
                 </View>
-                <Text style={styles.reportTitle}>Reportar conducta</Text>
-                <Text style={styles.reportSubtitle}>
-                  ¿Qué tipo de conducta inapropiada ocurrió durante esta sesión?
-                </Text>
+                <Text style={styles.reportTitle}>{i18next.t('mensajes.reportTitle')}</Text>
+                <Text style={styles.reportSubtitle}>{i18next.t('mensajes.reportSubtitle')}</Text>
 
                 <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
-                  {REPORT_REASONS_CHAT.map((item) => {
+                  {getReportReasons().map((item) => {
                     const active = selectedReportReason === item.id;
                     return (
                       <TouchableOpacity
@@ -618,7 +597,7 @@ export default function MensajeScreen() {
 
                   <TextInput
                     style={styles.reportInput}
-                    placeholder="Describe lo que ocurrió..."
+                    placeholder={i18next.t('mensajes.reportDescPlace')}
                     placeholderTextColor="#4B5563"
                     multiline
                     numberOfLines={3}
@@ -635,7 +614,7 @@ export default function MensajeScreen() {
                   activeOpacity={0.85}
                 >
                   <Text style={styles.reportSubmitBtnText}>
-                    {sendingReport ? i18next.t('loadingSave') : 'Enviar reporte'}
+                    {sendingReport ? i18next.t('loadingSave') : i18next.t('mensajes.enviarReporte')}
                   </Text>
                 </TouchableOpacity>
 
@@ -648,27 +627,30 @@ export default function MensajeScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* MODAL: PUNTOS GANADOS / PENALIZACION Requiere boton OK*/}
+      {/* MODAL: PUNTOS (requiere botón OK) */}
       <Modal visible={puntosModal} transparent animationType="fade">
         <View style={styles.overlayCenter}>
           <View style={styles.cardCenter}>
             {puntosGanados > 0 ? (
               <>
                 <Ionicons name="trophy" size={44} color="#FFD166" style={styles.cardIcon} />
-                <Text style={styles.cardTitle}>¡Ayuda completada!</Text>
+                <Text style={styles.cardTitle}>{i18next.t('mensajes.ayudaCompletada')}</Text>
                 <Text style={styles.puntosNum}>{`+${puntosGanados} pts`}</Text>
-                <Text style={styles.cardSubtitle}>Gracias por tu apoyo. Los puntos han sido añadidos a tu perfil.</Text>
+                <Text style={styles.cardSubtitle}>{i18next.t('mensajes.ayudaCompletadaSub')}</Text>
               </>
             ) : (
               <>
                 <Ionicons name="alert-circle" size={44} color="#FF4D4D" style={styles.cardIcon} />
-                <Text style={styles.cardTitle}>Sesión finalizada</Text>
+                <Text style={styles.cardTitle}>{i18next.t('mensajes.sesionFinalizada')}</Text>
                 <Text style={[styles.puntosNum, { color: '#FF4D4D' }]}>{`${puntosGanados} pts`}</Text>
-                <Text style={styles.cardSubtitle}>La calificación baja afectó tus puntos esta vez. ¡Ánimo para la próxima!</Text>
+                <Text style={styles.cardSubtitle}>{i18next.t('mensajes.sesionFinalizadaSub')}</Text>
               </>
             )}
-            <TouchableOpacity style={styles.btnPrimary} onPress={() => { setPuntosModal(false); navigation.navigate('Tickets'); }}>
-              <Text style={styles.btnPrimaryText}>Ver mis tickets</Text>
+            <TouchableOpacity
+              style={styles.btnPrimary}
+              onPress={() => { setPuntosModal(false); navigation.navigate('Tickets'); }}
+            >
+              <Text style={styles.btnPrimaryText}>{i18next.t('mensajes.verTickets')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -686,6 +668,7 @@ export default function MensajeScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
