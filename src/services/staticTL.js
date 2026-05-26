@@ -105,7 +105,7 @@ i18next.init({
           abandonar: "Abandon help",
           libera: "Free this ticket for someone else",
           finalizar: "Finalize as canceled",
-          cierra: "Close the ticket permanentely",
+          cierra: "Close the ticket permanently",
           volver: "Return to chat",
           resuelto: "Problem solved?",
           cerrar: "The chat will be closed, and you will be able to score the help.",
@@ -114,6 +114,42 @@ i18next.init({
           califica: "Score the help!",
           enviar: "Submit and finalize",
           place: "Write a message...",
+          online: "Online",
+          typing: "Typing...",
+          // Rating modal
+          calificaSubtitle: "How was your experience?",
+          destacas: "WHAT DID YOU HIGHLIGHT?",
+          comentarioPlace: "Optional comment (e.g. Explained the steps very well)...",
+          algoSalio: "Something went wrong? ",
+          reportarLink: "Report",
+          // Conduct report modal
+          reportarConducta: "Report conduct",
+          reportTitle: "Report conduct",
+          reportSubtitle: "What kind of inappropriate behavior occurred during this session?",
+          reportDescPlace: "Describe what happened...",
+          enviarReporte: "Send report",
+          // Points modal
+          ayudaCompletada: "Help completed!",
+          ayudaCompletadaSub: "Thanks for your support. Points have been added to your profile.",
+          sesionFinalizada: "Session ended",
+          sesionFinalizadaSub: "The low rating affected your points this time. Keep it up!",
+          verTickets: "View my tickets",
+          // Feedback tags
+          feedbackTags: {
+            paciente: "Patient",
+            claro: "Clear",
+            rapido: "Fast",
+            conoceTema: "Knows the topic",
+            amable: "Friendly",
+          },
+          // Conduct report reasons
+          reportMotivos: {
+            actitud: "Rude or disrespectful attitude",
+            cobro: "Tried to charge for help",
+            noPresentó: "Did not show up to the agreed session",
+            contenido: "Sent inappropriate content",
+            otro: "Other reason",
+          },
         },
         profile: {
           newLevel: {
@@ -234,7 +270,7 @@ i18next.init({
           },
           notificaciones: {
             titulo: "NOTIFICATIONS",
-            push: "Push notificationa",
+            push: "Push notifications",
             tickets: "Tickets that match",
             insignias: "New insignias",
             mensajes: "New messages"
@@ -269,12 +305,13 @@ i18next.init({
           explorar: "Explore tickets",
           tuHistorial: "Your history will appear here",
           apoyo: "I'll help you!",
+          mensajeInicio: "Hello, I'll help you!",
           reporte: "Why do you consider that this ticket is inappropriate?",
           reporteDesc: "Describe what happened...",
           enChat: "In chat",
           irChat: "Go to chat",
           abandonar: "Abandon",
-          asignada: "Asigned",
+          asignada: "Assigned",
           sinVol: "No volunteer so far",
           ayudaPor: "Helped by ",
           editar: "See and edit",
@@ -522,7 +559,7 @@ i18next.init({
           proceder: "¿Cómo deseas proceder?",
           elegir: "Elige qué pasará con este ticket de ayuda.",
           abandonar: "Abandonar ayuda",
-          libera: "Libera el ticket para aguien más",
+          libera: "Libera el ticket para alguien más",
           finalizar: "Finalizar como cancelado",
           cierra: "Cierra el ticket permanentemente",
           volver: "Volver al chat",
@@ -535,6 +572,40 @@ i18next.init({
           place: "Escribe un mensaje...",
           online: "En línea",
           typing: "Escribiendo...",
+          // Modal de calificación
+          calificaSubtitle: "¿Cómo fue tu experiencia?",
+          destacas: "¿QUÉ DESTACAS?",
+          comentarioPlace: "Comentario opcional (ej. Explicó muy bien los pasos)...",
+          algoSalio: "¿Algo salió mal? ",
+          reportarLink: "Reportar",
+          // Modal de reporte de conducta
+          reportarConducta: "Reportar conducta",
+          reportTitle: "Reportar conducta",
+          reportSubtitle: "¿Qué tipo de conducta inapropiada ocurrió durante esta sesión?",
+          reportDescPlace: "Describe lo que ocurrió...",
+          enviarReporte: "Enviar reporte",
+          // Modal de puntos
+          ayudaCompletada: "¡Ayuda completada!",
+          ayudaCompletadaSub: "Gracias por tu apoyo. Los puntos han sido añadidos a tu perfil.",
+          sesionFinalizada: "Sesión finalizada",
+          sesionFinalizadaSub: "La calificación baja afectó tus puntos esta vez. ¡Ánimo para la próxima!",
+          verTickets: "Ver mis tickets",
+          // Tags de feedback
+          feedbackTags: {
+            paciente: "Paciente",
+            claro: "Claro",
+            rapido: "Rápido",
+            conoceTema: "Conoce el tema",
+            amable: "Amable",
+          },
+          // Motivos de reporte de conducta
+          reportMotivos: {
+            actitud: "Actitud grosera o irrespetuosa",
+            cobro: "Intentó cobrar por la ayuda",
+            noPresentó: "No se presentó a la sesión acordada",
+            contenido: "Envió contenido inapropiado",
+            otro: "Otro motivo",
+          },
         },
         profile: {
           newLevel: {
@@ -690,6 +761,7 @@ i18next.init({
           explorar: "Explorar tickets",
           tuHistorial: "Tu historial aparecerá aquí",
           apoyo: "¡Yo te apoyo!",
+          mensajeInicio: "¡Hola, yo te apoyo!",
           reporte: "¿Por qué consideras que este ticket no es apropiado?",
           reporteDesc: "Describe lo que ocurrió...",
           enChat: "En chat",
@@ -806,7 +878,7 @@ i18next.init({
         },
         notif: {
           titulo: "Notificaciones",
-          sinNotif: "No tines notificaciones aún.",
+          sinNotif: "No tienes notificaciones aún.",
           mensaje: {
             titulo: "¡Alguien quiere ayudarte! 🚀",
             desc: "Han aceptado tu ticket: \"{{ticket}}\""
