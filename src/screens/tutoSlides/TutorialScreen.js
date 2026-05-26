@@ -1,9 +1,16 @@
 import React from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ImageBackground, TouchableOpacity } from 'react-native';
 import Onboarding from 'react-native-onboarding-swiper';
-import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import i18next from '../../services/staticTL';
+
+const tutorialImages = {
+  slide1: require('../../../assets/tutorial/slide1.png'),
+  slide2: require('../../../assets/tutorial/slide2.png'),
+  slide3: require('../../../assets/tutorial/slide3.png'),
+  slide4: require('../../../assets/tutorial/slide4.png'),
+  slide5: require('../../../assets/tutorial/slide5.png'),
+};
 
 const TutorialButton = ({ label, ...props }) => (
   <TouchableOpacity style={styles.footerButton} activeOpacity={0.8} {...props}>
@@ -11,25 +18,14 @@ const TutorialButton = ({ label, ...props }) => (
   </TouchableOpacity>
 );
 
-const SlideCard = ({ iconName, title, subtitle, imageSource }) => (
+const SlideCard = ({ title, subtitle, imageSource }) => (
   <View style={styles.page}>
-    <View style={styles.visualSection}>
-      <View style={styles.glowCircle} />
-      {imageSource ? (
-        <Image source={imageSource} style={styles.pageImage} resizeMode="contain" />
-      ) : (
-        <View style={styles.iconWrapper}>
-          <Ionicons name={iconName} size={72} color="#fff" />
-        </View>
-      )}
-    </View>
-
-    <BlurView intensity={80} tint="dark" style={styles.textPanel}>
-      {/* LAS IMAGENES DEBERAN IR EN "assets/tutorial" */}
-      {/* imageSource={require('../../../assets/tutorial/slide1.png')} */}
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
-    </BlurView>
+    <ImageBackground source={imageSource} style={styles.pageImage} resizeMode="cover">
+      <BlurView intensity={90} tint="dark" style={styles.textPanel}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      </BlurView>
+    </ImageBackground>
   </View>
 );
 
@@ -50,9 +46,9 @@ export default function TutorialScreen({ onDone }) {
           backgroundColor: '#0B0D14',
           image: (
             <SlideCard
-              iconName="rocket-outline"
               title={i18next.t('tutorial.welcomeTitle')}
               subtitle={i18next.t('tutorial.welcomeSubtitle')}
+              imageSource={tutorialImages.slide1}
             />
           ),
           title: '',
@@ -62,9 +58,9 @@ export default function TutorialScreen({ onDone }) {
           backgroundColor: '#121827',
           image: (
             <SlideCard
-              iconName="chatbubble-ellipses-outline"
               title={i18next.t('tutorial.messagesTitle')}
               subtitle={i18next.t('tutorial.messagesSubtitle')}
+              imageSource={tutorialImages.slide2}
             />
           ),
           title: '',
@@ -74,9 +70,9 @@ export default function TutorialScreen({ onDone }) {
           backgroundColor: '#1F2937',
           image: (
             <SlideCard
-              iconName="document-text-outline"
               title={i18next.t('tutorial.createTitle')}
               subtitle={i18next.t('tutorial.createSubtitle')}
+              imageSource={tutorialImages.slide3}
             />
           ),
           title: '',
@@ -86,14 +82,26 @@ export default function TutorialScreen({ onDone }) {
           backgroundColor: '#111827',
           image: (
             <SlideCard
-              iconName="person-circle-outline"
               title={i18next.t('tutorial.profileTitle')}
               subtitle={i18next.t('tutorial.profileSubtitle')}
+              imageSource={tutorialImages.slide4}
             />
           ),
           title: '',
           subtitle: '',
         },
+        {
+          backgroundColor: '#0B0D14',
+          image: (
+            <SlideCard
+              title={i18next.t('tutorial.readyTitle')}
+              subtitle={i18next.t('tutorial.readySubtitle')}
+              imageSource={tutorialImages.slide5}
+            />
+          ),
+          title: '',
+          subtitle: '',
+        }
       ]}
     />
   );
@@ -102,66 +110,43 @@ export default function TutorialScreen({ onDone }) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#0B0D14',
+    flex: 1,
   },
   imageContainer: {
     paddingBottom: 0,
+    flex: 1,
   },
   page: {
     flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    paddingBottom: 24,
-  },
-  visualSection: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  glowCircle: {
-    position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: '#4F46E5',
-    opacity: 0.14,
-    top: '20%',
-  },
-  iconWrapper: {
-    width: 150,
-    height: 150,
-    borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   pageImage: {
-    width: '75%',
-    height: '75%',
-    borderRadius: 24,
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-end',
   },
   textPanel: {
     width: '100%',
     borderRadius: 24,
-    padding: 22,
-    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    padding: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.18)',
   },
   title: {
     color: '#F8FAFC',
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   subtitle: {
     color: '#CBD5E1',
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 22,
     textAlign: 'center',
   },
   footerButton: {

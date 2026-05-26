@@ -82,7 +82,9 @@ i18next.init({
           createTitle: "Create tickets easily",
           createSubtitle: "Select a type, add a description and send your ticket in seconds.",
           profileTitle: "Profile and settings",
-          profileSubtitle: "Edit your account, change password and set your preferences."
+          profileSubtitle: "Edit your account, change password and set your preferences.",
+          readyTitle: "You're all set!",
+          readySubtitle: "Now you can explore the app and ask for help or support your peers!"
         },
         desconocido: "Unknown user",
         eliminar: "Delete",
@@ -532,13 +534,15 @@ i18next.init({
           next: "Siguiente",
           done: "Listo",
           welcomeTitle: "Bienvenido a RAM",
-          welcomeSubtitle: "Aprende rápido cómo crear, gestionar y revisar tus tickets.",
-          messagesTitle: "Mensajes y notificaciones",
-          messagesSubtitle: "Recibe actualizaciones en tiempo real y responde desde la app.",
+          welcomeSubtitle: "Aprende rápido cómo crear, gestionar y revisar tus tickets de ayuda.",
+          messagesTitle: "Gestion de tickets y mensajes",
+          messagesSubtitle: "Tienes total control en tus tickets: recibe notificaciones, responde mensajes, cancela y califica la ayuda recibida.",
           createTitle: "Crea tickets fácilmente",
           createSubtitle: "Selecciona un tipo, agrega descripción y envía tu ticket en segundos.",
-          profileTitle: "Perfil y ajustes",
-          profileSubtitle: "Edita tu cuenta, cambia contraseña y configura tus preferencias."
+          profileTitle: "Chats de ayudas",
+          profileSubtitle: "Comunícate con otros usuarios y recibe ayuda en tiempo real.",
+          readyTitle: "Perfil y ajustes",
+          readySubtitle: "Edita tu cuenta, cambia contraseña y configura tus preferencias."
         },
         desconocido: "Usuario desconocido",
         eliminar: "Eliminar",
