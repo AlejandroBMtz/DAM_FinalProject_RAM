@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
 
@@ -71,12 +72,12 @@ export default function TermsScreen({ navigation }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0B0D14'
+        backgroundColor: '#0B0D14',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: Platform.OS === 'ios' ? 0 : 40,
+        marginTop: 0,
         paddingHorizontal: 20,
         paddingVertical: 15,
         borderBottomWidth: 1,
