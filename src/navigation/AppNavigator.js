@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, ActivityIndicator, Platform, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { onAuthStateChanged, signOut } from 'firebase/auth'; // Asegúrate de importar signOut
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { updateDoc, doc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../services/firebaseConfig';
@@ -23,7 +23,11 @@ export default function AppNavigator() {
   const [tutorialLoaded, setTutorialLoaded] = useState(false);
   const [languageLoaded, setLanguageLoaded] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [navKey, setNavKey] = useState(0);
+
+  // FIX: Se elimina navKey para no recrear NavigationContainer al volver
+  // de background (ej. cuando el ImagePicker abre la galería).
+  // Recrear el NavigationContainer destruye el stack de navegación activo
+  // y saca al usuario de pantallas como MensajeScreen.
 
   const appState = useRef(AppState.currentState);
 
@@ -31,21 +35,17 @@ export default function AppNavigator() {
     const unsubscribe = onAuthStateChanged(auth, async (authenticatedUser) => {
       if (authenticatedUser) {
         try {
-          // FORZAR A FIREBASE A ACTUALIZAR EL ESTADO DEL CORREO
           await authenticatedUser.reload();
-
-          // Volvemos a obtener el usuario actualizado después del reload
           const currentUser = auth.currentUser;
 
           if (currentUser && currentUser.emailVerified) {
             setUser(currentUser);
             await loadLanguage(currentUser);
             await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-              online: true,  
+              online: true,
               lastActive: new Date().toISOString(),
             });
           } else {
-            // Si sigue sin estar verificado, limpiamos estado y cerramos sesión remota
             setUser(null);
             setLanguageLoaded(true);
             await signOut(auth);
@@ -69,22 +69,21 @@ export default function AppNavigator() {
         if (auth.currentUser) {
           try {
             await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-              online: false,  
+              online: false,
               lastActive: new Date().toISOString(),
             });
           } catch (e) {
             console.log("Error actualizando online status al background:", e);
           }
         }
-      }
-      else if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      } else if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         if (auth.currentUser) {
           try {
             await auth.currentUser.reload();
             if (auth.currentUser.emailVerified) {
               setUser(auth.currentUser);
               await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-                online: true,  
+                online: true,
                 lastActive: new Date().toISOString(),
               });
             }
@@ -92,7 +91,9 @@ export default function AppNavigator() {
             console.log("Error recargando en background:", e);
           }
         }
-        setNavKey((prev) => prev + 1);
+        // FIX: Se eliminó setNavKey aquí. Incrementar navKey al volver de
+        // background (incluyendo cuando el usuario elige una imagen) destruía
+        // el NavigationContainer y sacaba al usuario del chat.
       }
       appState.current = nextAppState;
     });
@@ -145,7 +146,7 @@ export default function AppNavigator() {
 
   if (showTutorial) {
     return (
-      <NavigationContainer key={navKey}>
+      <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Tutorial">
             {(props) => <TutorialScreen {...props} onDone={handleTutorialDone} />}
@@ -156,7 +157,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer key={navKey}>
+    <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <Stack.Screen name="Main" component={MainNavigator} />

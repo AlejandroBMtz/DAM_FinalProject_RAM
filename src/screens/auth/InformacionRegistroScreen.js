@@ -95,11 +95,12 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
 
     setLoading(true);
     try {
+      // 1. Creamos el usuario en Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
 
-      // Guardar información en Firestore
-      await setDoc(doc(db, 'users', user.uid), {
+      // 2. Preparamos la promesa de Firestore
+      const firestorePromise = setDoc(doc(db, 'users', user.uid), {
         nombre: nombre.trim(),
         email: email.trim(),
         carrera,
@@ -112,19 +113,36 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
         points: 0,
       });
 
-      // Enviar correo de verificación de Firebase
+      // 3. Preparamos una promesa de Timeout (10 segundos)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout_firestore')), 10000)
+      );
+
+      // 4. Hacemos que compitan. Si Firestore se queda colgado, el timeout gana y lanza el error.
+      await Promise.race([firestorePromise, timeoutPromise]);
+
+      // 5. Si pasamos Firestore con éxito, enviamos el correo
       await sendEmailVerification(user);
 
-      // Mostramos feedback de éxito indicando que verifique su correo
       showFeedback(
         '¡Registro casi listo!',
         'Hemos enviado un correo de verificación a tu cuenta institucional. Por favor, verifícalo antes de iniciar sesión (revisa también la carpeta de spam).',
         true
       );
-
     } catch (error) {
-      console.log('Error en Firebase:', error);
-      showFeedback('Error de Registro', getFriendlyError(error.code));
+      console.log('Error COMPLETO en Firebase:', error);
+      
+      // Manejo específico del Timeout o errores de red
+      if (error.message === 'timeout_firestore') {
+        showFeedback(
+          'Error de Conexión', 
+          'Firestore no responde. Revisa si "Firestore Database" está creada en tu consola de Firebase, o intenta usar datos móviles en lugar de la red actual.'
+        );
+      } else {
+        // Protegemos el código por si error.code no existe en errores ajenos a Auth
+        const codigoError = error?.code || 'desconocido';
+        showFeedback('Error de Registro', getFriendlyError(codigoError));
+      }
     } finally {
       setLoading(false);
     }
