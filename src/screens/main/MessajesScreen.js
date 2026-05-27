@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
 import { collection, query, where, orderBy, or, and, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
@@ -12,7 +12,10 @@ export default function MensajesScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Formateador de tiempo
+  const onlineListenersRef = useRef({});
+
+  const onlineDataMapRef = useRef({});
+
   const formatTime = (isoString) => {
     if (!isoString) return '';
     const date = new Date(isoString);
@@ -24,35 +27,52 @@ export default function MensajesScreen() {
     } else if (diffDias === 1 || (diffDias === 0 && now.getDate() !== date.getDate())) {
       return i18next.t("dias.ayer");
     } else if (diffDias < 7) {
-      const dias = [i18next.t("dias.dom"), i18next.t("dias.lun"), i18next.t("dias.mar"), i18next.t("dias.mie"), i18next.t("dias.jue"), i18next.t("dias.vie"), i18next.t("dias.sab")];
+      const dias = [
+        i18next.t("dias.dom"), i18next.t("dias.lun"), i18next.t("dias.mar"),
+        i18next.t("dias.mie"), i18next.t("dias.jue"), i18next.t("dias.vie"), i18next.t("dias.sab")
+      ];
       return dias[date.getDay()];
     } else {
       return date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
     }
   };
 
-  const getUserData = async (solicitante, ayudante) => {
-    const currentUid = auth.currentUser?.uid;
-    const otherUid = solicitante === currentUid ? ayudante : solicitante;
-    if (!otherUid) return { nombre: '', fotoPerfil: null };
+  const registrarOnlineListener = (otherUid, userUid) => {
+    if (onlineListenersRef.current[otherUid]) return; // ya existe, no duplicar
 
-    try {
-      const userRef = doc(db, 'users', otherUid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const data = userSnap.data();
-        // El campo correcto en Firestore es fotoPerfil
-        return {
-          nombre: data.nombre || '',
-          fotoPerfil: data.fotoPerfil || null,
-          online: data.online || false,
+    const unsubOnline = onSnapshot(
+      doc(db, 'users', otherUid),
+      (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+
+        // Actualizar caché local
+        onlineDataMapRef.current[otherUid] = {
+          ...onlineDataMapRef.current[otherUid],
+          online: !!data.online,
           lastActive: data.lastActive || null,
         };
+
+        // Propagar el cambio al estado de React para re-render
+        setConversaciones((prev) =>
+          prev.map((c) => {
+            const cOtherUid = c.solicitante === userUid ? c.ayudante : c.solicitante;
+            if (cOtherUid === otherUid) {
+              return { ...c, online: !data.online, lastActive: data.lastActive || null };
+            }
+            return c;
+          })
+        );
+      },
+      (err) => {
+        if (err.code === 'permission-denied' || err.code === 'unauthenticated') {
+          onlineListenersRef.current[otherUid]?.();
+          delete onlineListenersRef.current[otherUid];
+        }
       }
-    } catch (error) {
-      console.log('Error al obtener info del usuario:', error);
-    }
-    return { nombre: '', fotoPerfil: null, online: false, lastActive: null };
+    );
+
+    onlineListenersRef.current[otherUid] = unsubOnline;
   };
 
   const obtenerConversaciones = () => {
@@ -76,25 +96,44 @@ export default function MensajesScreen() {
       const unsub = onSnapshot(q, async (querySnapshot) => {
         const results = await Promise.all(querySnapshot.docs.map(async (docSnap) => {
           const data = docSnap.data();
-          const userInfo = await getUserData(data.solicitante, data.ayudante);
           const otherUid = data.solicitante === userUid ? data.ayudante : data.solicitante;
           const typingKey = `typing_${otherUid}`;
-
-          // Leer el campo de no leídos correspondiente al usuario actual.
-          // Se guarda como noLeidos_<uid> para diferenciar por participante.
           const noLeidosKey = `noLeidos_${userUid}`;
           const noLeidos = data[noLeidosKey] || 0;
           const typing = !!data[typingKey];
 
+          if (!onlineDataMapRef.current[otherUid]) {
+            try {
+              const userSnap = await getDoc(doc(db, 'users', otherUid));
+              if (userSnap.exists()) {
+                const ud = userSnap.data();
+                onlineDataMapRef.current[otherUid] = {
+                  nombre: ud.nombre || '',
+                  fotoPerfil: ud.fotoPerfil || null,
+                  online: !!ud.online,
+                  lastActive: ud.lastActive || null,
+                };
+              } else {
+                onlineDataMapRef.current[otherUid] = { nombre: '', fotoPerfil: null, online: false, lastActive: null };
+              }
+            } catch (e) {
+              onlineDataMapRef.current[otherUid] = { nombre: '', fotoPerfil: null, online: false, lastActive: null };
+            }
+          }
+
+          registrarOnlineListener(otherUid, userUid);
+
+          const userInfo = onlineDataMapRef.current[otherUid];
+
           return {
             id: docSnap.id,
+            ...data,
             nombre: userInfo.nombre,
             fotoPerfil: userInfo.fotoPerfil,
             online: userInfo.online,
             lastActive: userInfo.lastActive,
             typing,
             noLeidos,
-            ...data,
           };
         }));
         setConversaciones(results);
@@ -111,7 +150,14 @@ export default function MensajesScreen() {
   useEffect(() => {
     const unsub = obtenerConversaciones();
     return () => {
+      // Desuscribir listener principal de conversaciones
       if (typeof unsub === 'function') unsub();
+
+      Object.values(onlineListenersRef.current).forEach((unsubOnline) => {
+        if (typeof unsubOnline === 'function') unsubOnline();
+      });
+      onlineListenersRef.current = {};
+      onlineDataMapRef.current = {};
     };
   }, []);
 
@@ -180,7 +226,6 @@ export default function MensajesScreen() {
                       <Text style={[styles.chatTime, tieneNoLeidos && styles.chatTimeUnread]}>
                         {formatTime(convo.ultimaActividad)}
                       </Text>
-                      {/* Badge de no leídos */}
                       {tieneNoLeidos && (
                         <View style={styles.unreadBadge}>
                           <Text style={styles.unreadBadgeText}>
@@ -191,7 +236,6 @@ export default function MensajesScreen() {
                     </View>
                   </View>
 
-                  {/* Título del problema */}
                   <Text style={styles.chatTitle} numberOfLines={1}>
                     {convo.tituloProblema || i18next.t("mensajes.noEsp")}
                   </Text>

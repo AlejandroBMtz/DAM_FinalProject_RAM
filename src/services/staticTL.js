@@ -6,6 +6,7 @@ i18next.init({
   resources: {
     en: {
       translation: {
+        aceptar: "Accept",
         back: "Back",
         buscar: "Search",
         loading: "Loading...",
@@ -467,6 +468,7 @@ i18next.init({
     },
     es: {
       translation: {
+        aceptar: "Aceptar",
         back: "Regresar",
         buscar: "Buscar",
         loading: "Cargando...",

@@ -3,8 +3,9 @@ import { View, ActivityIndicator, Platform, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { onAuthStateChanged, signOut } from 'firebase/auth'; // Asegúrate de importar signOut
+import { updateDoc, doc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '../services/firebaseConfig';
+import { auth, db } from '../services/firebaseConfig';
 import i18next from '../services/staticTL';
 import { initializeAppLanguage } from '../services/startup';
 
@@ -39,6 +40,10 @@ export default function AppNavigator() {
           if (currentUser && currentUser.emailVerified) {
             setUser(currentUser);
             await loadLanguage(currentUser);
+            await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+              online: true,  
+              lastActive: new Date().toISOString(),
+            });
           } else {
             // Si sigue sin estar verificado, limpiamos estado y cerramos sesión remota
             setUser(null);
@@ -60,13 +65,28 @@ export default function AppNavigator() {
     checkTutorialStatus();
 
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      // Si la app vuelve de estar en segundo plano (cuando el alumno regresa de revisar su correo)
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
+        if (auth.currentUser) {
+          try {
+            await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+              online: false,  
+              lastActive: new Date().toISOString(),
+            });
+          } catch (e) {
+            console.log("Error actualizando online status al background:", e);
+          }
+        }
+      }
+      else if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         if (auth.currentUser) {
           try {
             await auth.currentUser.reload();
             if (auth.currentUser.emailVerified) {
               setUser(auth.currentUser);
+              await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+                online: true,  
+                lastActive: new Date().toISOString(),
+              });
             }
           } catch (e) {
             console.log("Error recargando en background:", e);

@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, StyleSheet, TouchableOpacity, Text, ScrollView, 
-  Switch, Platform, StatusBar, Modal, TextInput, ActivityIndicator 
+import {
+  View, StyleSheet, TouchableOpacity, Text, ScrollView,
+  Switch, Platform, StatusBar, Modal, TextInput, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { auth, db } from '../../services/firebaseConfig';
-import { 
-  signOut, 
-  deleteUser, 
-  EmailAuthProvider, 
-  reauthenticateWithCredential 
+import {
+  signOut,
+  deleteUser,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import i18next from '../../services/staticTL';
 
 const SectionLabel = ({ title }) => (
@@ -33,22 +33,18 @@ const SettingsScreen = () => {
   const navigation = useNavigation();
   const user = auth.currentUser;
 
-  // Estados originales
   const [notifPush, setNotifPush] = useState(true);
   const [notifTickets, setNotifTickets] = useState(true);
   const [notifBadges, setNotifBadges] = useState(true);
   const [notifMessages, setNotifMessages] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
 
-  // Estados para los modales
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  
-  // Estado para el modal Generico (Info / Error / Exito)
+
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [infoModalConfig, setInfoModalConfig] = useState({ title: '', message: '', type: 'info' });
-  
-  // Estados para eliminar cuenta
+
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -59,7 +55,6 @@ const SettingsScreen = () => {
         try {
           const userDoc = doc(db, 'users', user.uid);
           const docSnap = await getDoc(userDoc);
-
           if (docSnap.exists() && docSnap.data().settings) {
             const settings = docSnap.data().settings;
             if (settings.notifPush !== undefined) setNotifPush(settings.notifPush);
@@ -73,7 +68,6 @@ const SettingsScreen = () => {
         }
       }
     };
-
     fetchSettings();
   }, [user]);
 
@@ -82,9 +76,7 @@ const SettingsScreen = () => {
     if (user) {
       try {
         const userDoc = doc(db, 'users', user.uid);
-        await setDoc(userDoc, {
-          settings: { [key]: value }
-        }, { merge: true });
+        await setDoc(userDoc, { settings: { [key]: value } }, { merge: true });
       } catch (error) {
         console.error("Error al guardar:", error);
         setter(!value);
@@ -95,26 +87,20 @@ const SettingsScreen = () => {
   useFocusEffect(
     useCallback(() => {
       const parent = navigation.getParent();
-      if (parent) {
-        parent.setOptions({ tabBarStyle: { display: 'none' } });
-      }
+      if (parent) parent.setOptions({ tabBarStyle: { display: 'none' } });
       return () => {
-        if (parent) {
-          parent.setOptions({ tabBarStyle: { display: 'flex' } });
-        }
+        if (parent) parent.setOptions({ tabBarStyle: { display: 'flex' } });
       };
     }, [navigation])
   );
 
-  // Funcion para mostrar mensajes generales
   const showInfoModal = (title, message, type = 'info') => {
     setInfoModalConfig({ title, message, type });
     setInfoModalVisible(true);
   };
 
-  // Funciones de modales
   const handleLogoutPress = () => setLogoutModalVisible(true);
-  
+
   const handleDeletePress = () => {
     setPassword('');
     setPasswordError('');
@@ -124,6 +110,16 @@ const SettingsScreen = () => {
   const confirmLogout = async () => {
     try {
       setLogoutModalVisible(false);
+
+      if (user) {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), {
+            online: false,
+            lastActive: new Date().toISOString(),
+          });
+        } catch (_) {}
+      }
+
       await signOut(auth);
     } catch (error) {
       showInfoModal('Error', i18next.t("profile.errorCerrar") || 'No se pudo cerrar sesión', 'error');
@@ -141,27 +137,28 @@ const SettingsScreen = () => {
 
     try {
       const credential = EmailAuthProvider.credential(user.email, password);
-      
-      // Intentamos reautenticar
       await reauthenticateWithCredential(user, credential);
-      
-      // Si pasa la reautenticacion, eliminamos
+
+      // Marcar offline antes de eliminar
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          online: false,
+          lastActive: new Date().toISOString(),
+        });
+      } catch (_) {}
+
       await deleteUser(user);
       setDeleteModalVisible(false);
-      
+
     } catch (error) {
-      console.log("Error al eliminar cuenta:", error.code); // Para debug 
-      
-      // Evaluamos el codigo de error de Firebase para dar un mensaje amigable
+      console.log("Error al eliminar cuenta:", error.code);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
         setPasswordError(i18next.t("profile.errorPassIncorrecta") || "La contraseña no es correcta. Inténtalo de nuevo.");
       } else if (error.code === 'auth/too-many-requests') {
         setPasswordError("Demasiados intentos fallidos. Inténtalo más tarde.");
       } else {
-        // Fallback para cualquier otro error
         setPasswordError("Hubo un problema al verificar tu cuenta.");
       }
-      
     } finally {
       setIsDeleting(false);
     }
@@ -265,10 +262,9 @@ const SettingsScreen = () => {
           />
         </View>
 
-        {/* ── CUENTA PELIGROSA ── */}
         <SectionLabel title={i18next.t("settings.eliminar.titulo")} />
         <View style={styles.group}>
-           <SettingRow
+          <SettingRow
             icon="logout"
             iconColor="#EE951D"
             iconBg="#2a2809"
@@ -291,28 +287,27 @@ const SettingsScreen = () => {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* MODAL GENERICO (Para Errores, Informacion o Exito como el cambio de Idioma) */}
+      {/* MODAL GENERICO */}
       <Modal visible={infoModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={[
-              styles.modalIconBoxGeneric, 
+              styles.modalIconBoxGeneric,
               { backgroundColor: infoModalConfig.type === 'error' ? '#2A0A0A' : '#1E1B3A' }
             ]}>
-              <MaterialCommunityIcons 
-                name={infoModalConfig.type === 'error' ? "alert-circle-outline" : "information-outline"} 
-                size={32} 
-                color={infoModalConfig.type === 'error' ? "#F87171" : "#4F46E5"} 
+              <MaterialCommunityIcons
+                name={infoModalConfig.type === 'error' ? "alert-circle-outline" : "information-outline"}
+                size={32}
+                color={infoModalConfig.type === 'error' ? "#F87171" : "#4F46E5"}
               />
             </View>
             <Text style={styles.modalTitle}>{infoModalConfig.title}</Text>
             <Text style={styles.modalMessage}>{infoModalConfig.message}</Text>
-            
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.modalBtnSingleAction, 
+                styles.modalBtnSingleAction,
                 { backgroundColor: infoModalConfig.type === 'error' ? '#EF4444' : '#4F46E5' }
-              ]} 
+              ]}
               onPress={() => setInfoModalVisible(false)}
             >
               <Text style={styles.modalBtnActionText}>{i18next.t("aceptar") || "Aceptar"}</Text>
@@ -330,7 +325,6 @@ const SettingsScreen = () => {
             </View>
             <Text style={styles.modalTitle}>{i18next.t("profile.cerrarSesion")}</Text>
             <Text style={styles.modalMessage}>{i18next.t("profile.cerrarConfirmacion")}</Text>
-            
             <View style={styles.modalButtonRow}>
               <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setLogoutModalVisible(false)}>
                 <Text style={styles.modalBtnCancelText}>{i18next.t("cancelar") || "Cancelar"}</Text>
@@ -352,7 +346,6 @@ const SettingsScreen = () => {
             </View>
             <Text style={styles.modalTitle}>{i18next.t("profile.eliminar")}</Text>
             <Text style={styles.modalMessage}>{i18next.t("profile.eliminarConfirmacion")}</Text>
-            
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.modalInput, passwordError ? styles.modalInputError : null]}
@@ -368,18 +361,16 @@ const SettingsScreen = () => {
               />
               {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
             </View>
-
             <View style={styles.modalButtonRow}>
-              <TouchableOpacity 
-                style={styles.modalBtnCancel} 
+              <TouchableOpacity
+                style={styles.modalBtnCancel}
                 onPress={() => setDeleteModalVisible(false)}
                 disabled={isDeleting}
               >
                 <Text style={styles.modalBtnCancelText}>{i18next.t("cancelar") || "Cancelar"}</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalBtnActionDelete, (!password || isDeleting) && styles.modalBtnDisabled]} 
+              <TouchableOpacity
+                style={[styles.modalBtnActionDelete, (!password || isDeleting) && styles.modalBtnDisabled]}
                 onPress={confirmDeleteAccount}
                 disabled={!password || isDeleting}
               >
@@ -393,7 +384,6 @@ const SettingsScreen = () => {
           </View>
         </View>
       </Modal>
-
     </View>
   );
 };
