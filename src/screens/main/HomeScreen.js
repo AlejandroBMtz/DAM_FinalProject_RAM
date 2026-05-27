@@ -131,8 +131,8 @@ export default function FeedScreen() {
   // Logica de filtrado en HomeScreen.js
   const filteredTickets = tickets
     .filter((ticket) => {
-      // 1. Excluir tickets que ya están en proceso
-      if (ticket.estado === 'en proceso') {
+      // 1. Mostrar UNICAMENTE los tickets que están disponibles
+      if (ticket.estado !== 'disponible') {
         return false;
       }
       

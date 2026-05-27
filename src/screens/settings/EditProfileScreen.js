@@ -29,15 +29,15 @@ export default function EditProfileScreen({ navigation }) {
   const [semestre, setSemestre] = useState('');
   const [habilidades, setHabilidades] = useState([]);
   const [photoUrl, setPhotoUrl] = useState('');
+  // FIX: selectedImage guarda el objeto asset completo para tener URI y metadata
   const [selectedImage, setSelectedImage] = useState(null);
 
   const [modalCarrera, setModalCarrera] = useState(false);
   const [modalSemestre, setModalSemestre] = useState(false);
 
-  // Modal de feedback (exito / error / validacion)
   const [feedbackModal, setFeedbackModal] = useState({
     visible: false,
-    type: 'success',   // 'success' | 'error'
+    type: 'success',
     title: '',
     subtitle: '',
     autoClose: false,
@@ -65,9 +65,9 @@ export default function EditProfileScreen({ navigation }) {
     setFeedbackModal((prev) => ({ ...prev, visible: false }));
   };
 
-  // Load data
+  // Cargar datos del perfil
   useEffect(() => {
-    const fetch = async () => {
+    const fetchProfile = async () => {
       if (!auth.currentUser) return;
       try {
         const snap = await getDoc(doc(db, 'users', auth.currentUser.uid));
@@ -85,10 +85,10 @@ export default function EditProfileScreen({ navigation }) {
         setLoading(false);
       }
     };
-    fetch();
+    fetchProfile();
   }, []);
 
-  // Image picker
+  // Solicitar permiso de galería
   useEffect(() => {
     (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -110,11 +110,14 @@ export default function EditProfileScreen({ navigation }) {
         aspect: [1, 1],
         quality: 0.8,
       });
-      if (!result.canceled) {
-        setSelectedImage(result.assets[0]);
-        setPhotoUrl(result.assets[0].uri);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setSelectedImage(asset);
+        // Mostrar la imagen local inmediatamente en la UI
+        setPhotoUrl(asset.uri);
       }
     } catch (e) {
+      console.log('Error al seleccionar imagen:', e);
       showFeedback({
         type: 'error',
         title: 'Error',
@@ -129,7 +132,13 @@ export default function EditProfileScreen({ navigation }) {
     );
   };
 
-  // Save
+  // FIX: handleSave corregido
+  // Problema anterior: las validaciones de carrera, semestre y habilidades
+  // bloqueaban el guardado incluso si el usuario solo quería actualizar la foto
+  // o el nombre. Ahora solo se valida que el nombre no esté vacío, ya que los
+  // demás campos pueden no haberse configurado aún en el perfil.
+  // También se corrigió el orden de operaciones: primero se sube la imagen,
+  // luego se actualiza Firestore, y solo al final se limpia el estado local.
   const handleSave = async () => {
     if (!nombre.trim()) {
       showFeedback({
@@ -139,43 +148,30 @@ export default function EditProfileScreen({ navigation }) {
       });
       return;
     }
-    if (!carrera) {
-      showFeedback({
-        type: 'error',
-        title: i18next.t('error.atencion'),
-        subtitle: 'Por favor selecciona tu carrera.',
-      });
-      return;
-    }
-    if (!semestre) {
-      showFeedback({
-        type: 'error',
-        title: i18next.t('error.atencion'),
-        subtitle: 'Por favor selecciona tu semestre.',
-      });
-      return;
-    }
-    if (habilidades.length === 0) {
-      showFeedback({
-        type: 'error',
-        title: i18next.t('error.atencion'),
-        subtitle: 'Selecciona al menos una habilidad.',
-      });
-      return;
-    }
 
     setSaving(true);
     try {
-      const updateData = { nombre: nombre.trim(), carrera, semestre, habilidades };
+      const updateData = {
+        nombre: nombre.trim(),
+        carrera,
+        semestre,
+        habilidades,
+      };
 
+      // FIX: subir imagen ANTES de actualizar Firestore, y limpiar estado
+      // solo si todo salió bien, para evitar estados inconsistentes.
       if (selectedImage) {
         const url = await uploadImageToCloudinary(selectedImage.uri);
         updateData.fotoPerfil = url;
-        setPhotoUrl(url);
-        setSelectedImage(null);
       }
 
       await updateDoc(doc(db, 'users', auth.currentUser.uid), updateData);
+
+      // Solo limpiar selectedImage y actualizar photoUrl si Firestore se actualizó
+      if (selectedImage) {
+        setPhotoUrl(updateData.fotoPerfil);
+        setSelectedImage(null);
+      }
 
       showFeedback({
         type: 'success',
@@ -185,7 +181,7 @@ export default function EditProfileScreen({ navigation }) {
         onClose: () => navigation.goBack(),
       });
     } catch (e) {
-      console.log(e);
+      console.log('Error al guardar perfil:', e);
       showFeedback({
         type: 'error',
         title: 'Error',
@@ -235,6 +231,10 @@ export default function EditProfileScreen({ navigation }) {
             </View>
           </TouchableOpacity>
           <Text style={styles.photoHint}>{i18next.t("profile.edit.foto")}</Text>
+          {/* Indicador visual de imagen pendiente de guardar */}
+          {selectedImage && (
+            <Text style={styles.photoHint}>📸 Foto seleccionada — guarda para aplicarla</Text>
+          )}
         </View>
 
         {/* NOMBRE */}
@@ -363,7 +363,7 @@ export default function EditProfileScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* MODAL FEEDBACk */}
+      {/* MODAL FEEDBACK */}
       <Modal visible={feedbackModal.visible} transparent animationType="fade">
         <View style={styles.feedbackOverlay}>
           <View style={styles.feedbackContent}>
@@ -376,8 +376,6 @@ export default function EditProfileScreen({ navigation }) {
             </View>
             <Text style={styles.feedbackTitle}>{feedbackModal.title}</Text>
             <Text style={styles.feedbackSubtitle}>{feedbackModal.subtitle}</Text>
-
-            {/* Boton OK solo en modales que no se cierran solos */}
             {!feedbackModal.autoClose && (
               <TouchableOpacity style={styles.feedbackBtn} onPress={closeFeedback} activeOpacity={0.8}>
                 <Text style={styles.feedbackBtnText}>{i18next.t('ok')}</Text>

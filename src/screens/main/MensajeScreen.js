@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Tex
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { collection, query, where, orderBy, doc, addDoc, onSnapshot, getDoc, updateDoc, increment, } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, addDoc, onSnapshot, getDoc, updateDoc, increment, arrayUnion,} from 'firebase/firestore';
 import { auth, db } from '../../services/firebaseConfig';
 import { evaluateBadges } from '../../utils/badges';
 import { otorgarPuntosResolucion, penalizarAbandono } from '../../utils/points';
@@ -252,14 +252,28 @@ export default function MensajeScreen() {
         const snap = await getDoc(doc(db, 'solicitudes', conversacionData.solicitudId));
         if (snap.exists()) prioridad = snap.data().prioridad || 3;
       }
+      
+      // Se aplica la penalización al usuario que abandona
       await penalizarAbandono(currentUid, prioridad);
-      await updateDoc(doc(db, 'conversaciones', conversacionData.id), { estado: 'cancelada' });
-      await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), {
-        estado: 'disponible', ayudante: null,
+      
+      // Se cancela la conversación (chat) actual
+      await updateDoc(doc(db, 'conversaciones', conversacionData.id), { 
+        estado: 'cancelada' 
       });
+      
+      // El ticket vuelve a estar disponible para todos
+      await updateDoc(doc(db, 'solicitudes', conversacionData.solicitudId), {
+        estado: 'disponible', 
+        ayudante: null
+      });
+      
       setCancelModal(false);
       navigation.goBack();
-    } catch (e) { console.log('Error abandonar:', e); setCancelModal(false); navigation.goBack(); }
+    } catch (e) { 
+      console.log('Error abandonar:', e); 
+      setCancelModal(false); 
+      navigation.goBack(); 
+    }
   };
 
   const finalizarComoCancelado = async () => {
