@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
   ScrollView,
   StatusBar,
-  ActivityIndicator, 
+  ActivityIndicator,
   Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ import i18next from '../../services/staticTL';
 
 // Importaciones de Firebase
 import { auth } from '../../services/firebaseConfig';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, sendEmailVerification } from 'firebase/auth';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -25,7 +25,7 @@ const LoginScreen = ({ navigation }) => {
 
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  
+
   // Estado para el loader
   const [loading, setLoading] = useState(false);
 
@@ -45,7 +45,6 @@ const LoginScreen = ({ navigation }) => {
     setEmailError('');
     setPasswordError('');
 
-    // Validacion de correo institucional
     if (!email) {
       setEmailError(i18next.t('auth.login.errors.emailRequired'));
       isValid = false;
@@ -54,26 +53,32 @@ const LoginScreen = ({ navigation }) => {
       isValid = false;
     }
 
-    // Validacion de contraseña
     if (!password) {
       setPasswordError(i18next.t('auth.login.errors.passwordRequired'));
       isValid = false;
-    } 
+    }
 
-    if (!isValid) return; // Si hay error, detenemos la funcion aqui
+    if (!isValid) return;
 
     setLoading(true);
 
     try {
-      // Llamada a Firebase
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      
-      
-      // No usamos navigation.navigate('HomeScreen') aquí, porque el AppNavigator detectara automaticamente el inicio de sesion
-      // y cambiara la pantalla.
-      
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const user = userCredential.user;
+
+      // Nos aseguramos que el objeto 'user' exista antes de leer sus propiedades
+      if (user) {
+        await user.reload(); // Forzar actualización de datos frescos de Firebase
+
+        if (!user.emailVerified) {
+          await sendEmailVerification(user);
+          setPasswordError('Tu cuenta no está verificada. Hemos enviado un enlace de confirmación a tu correo institucional. Por favor, revísalo antes de ingresar.');
+          await signOut(auth);
+          return;
+        }
+      }
+
     } catch (error) {
-      // Si falla, mostramos el error debajo del input de contraseña
       setPasswordError(getFriendlyError(error.code));
     } finally {
       setLoading(false);
@@ -83,7 +88,7 @@ const LoginScreen = ({ navigation }) => {
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <StatusBar barStyle="light-content" backgroundColor="#0B0D14" />
-      
+
       {/* Contenedor del Logo */}
       <View style={styles.logoContainer}>
         <Image source={require('../../../assets/images/Logo.png')} style={{ width: 150, height: 150, resizeMode: 'contain' }} />
@@ -130,10 +135,10 @@ const LoginScreen = ({ navigation }) => {
             }}
           />
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <MaterialCommunityIcons 
-              name={showPassword ? "eye-off-outline" : "eye-outline"} 
-              size={20} 
-              color="#7E8494" 
+            <MaterialCommunityIcons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#7E8494"
             />
           </TouchableOpacity>
         </View>
@@ -143,10 +148,10 @@ const LoginScreen = ({ navigation }) => {
       {/* Opciones extras */}
       <View style={styles.optionsContainer}>
         <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
-          <MaterialCommunityIcons 
-            name={rememberMe ? "checkbox-marked" : "checkbox-blank-outline"} 
-            size={20} 
-            color={rememberMe ? "#2563EB" : "#7E8494"} 
+          <MaterialCommunityIcons
+            name={rememberMe ? "checkbox-marked" : "checkbox-blank-outline"}
+            size={20}
+            color={rememberMe ? "#2563EB" : "#7E8494"}
           />
           <Text style={styles.checkboxText}>{i18next.t('auth.login.rememberMe')}</Text>
         </TouchableOpacity>
@@ -156,8 +161,8 @@ const LoginScreen = ({ navigation }) => {
       </View>
 
       {/* Botón Principal (Con estado de carga) */}
-      <TouchableOpacity 
-        style={[styles.loginButton, loading && { opacity: 0.7 }]} 
+      <TouchableOpacity
+        style={[styles.loginButton, loading && { opacity: 0.7 }]}
         onPress={handleLogin}
         disabled={loading}
       >
@@ -166,17 +171,6 @@ const LoginScreen = ({ navigation }) => {
         ) : (
           <Text style={styles.loginButtonText}>{i18next.t('auth.login.loginButton')}</Text>
         )}
-      </TouchableOpacity>
-
-      <View style={styles.dividerContainer}>
-        <View style={styles.divider} />
-        <Text style={styles.dividerText}>{i18next.t('auth.login.continueWith')}</Text>
-        <View style={styles.divider} />
-      </View>
-
-      <TouchableOpacity style={styles.googleButton}>
-        <MaterialCommunityIcons name="google" size={20} color="#FFF" style={{ marginRight: 10 }} />
-        <Text style={styles.googleButtonText}>{i18next.t('auth.login.google')}</Text>
       </TouchableOpacity>
 
       <View style={styles.registerContainer}>
@@ -192,7 +186,7 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#0B0D14', 
+    backgroundColor: '#0B0D14',
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 30,
@@ -226,7 +220,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1C1F2B', 
+    backgroundColor: '#1C1F2B',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#2D3243',
@@ -234,7 +228,7 @@ const styles = StyleSheet.create({
     height: 50,
   },
   inputError: {
-    borderColor: '#EF4444', 
+    borderColor: '#EF4444',
   },
   icon: {
     marginRight: 10,
@@ -270,7 +264,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   loginButton: {
-    backgroundColor: '#2563EB', 
+    backgroundColor: '#2563EB',
     borderRadius: 8,
     height: 50,
     justifyContent: 'center',
@@ -281,37 +275,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#2D3243',
-  },
-  dividerText: {
-    color: '#7E8494',
-    paddingHorizontal: 14,
-    fontSize: 14,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    backgroundColor: '#1C1F2B',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2D3243',
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  googleButtonText: {
-    color: '#E5E7EB',
-    fontSize: 15,
-    fontWeight: '500',
   },
   registerContainer: {
     flexDirection: 'row',

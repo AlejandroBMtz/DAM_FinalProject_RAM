@@ -2,192 +2,100 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, ActivityIndicator, Platform, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth'; // Asegúrate de importar signOut
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, db } from '../services/firebaseConfig';
+import { auth } from '../services/firebaseConfig';
 import i18next from '../services/staticTL';
 import { initializeAppLanguage } from '../services/startup';
-
-// imports de expo  
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import TutorialScreen from '../screens/tutoSlides/TutorialScreen';
 
-// configuracion de notificaciones 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
 const Stack = createNativeStackNavigator();
-
 const GUEST_TUTORIAL_KEY = '@hasSeenTutorial_guest';
 const userTutorialKey = (uid) => `@hasSeenTutorial_${uid}`;
 
 export default function AppNavigator() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialLoaded, setTutorialLoaded] = useState(false);
   const [languageLoaded, setLanguageLoaded] = useState(false);
-  const [navKey, setNavKey] = useState(i18next.language || 'es');
-  const tutorialLoadedForRef = useRef(null);
-  const notificationListener = useRef();
-  const responseListener = useRef();
-  const activeUserRef = useRef(null);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [navKey, setNavKey] = useState(0);
 
-  // obtener token 
-  const registerForPushNotificationsAsync = async (uid) => {
-    let token;
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-    }
-
-    if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== 'granted') {
-        console.log('Permiso denegado para notificaciones');
-        return;
-      }
-      token = (await Notifications.getExpoPushTokenAsync()).data;
-      console.log("Tu Push Token es:", token);
-
-      // Guardar el token en el documento del usuario en Firestore
-      try {
-        const userRef = doc(db, 'users', uid);
-        await updateDoc(userRef, { pushToken: token });
-      } catch (error) {
-        console.log("Error guardando el token:", error);
-      }
-
-    } else {
-      console.log('Debes usar un dispositivo físico para recibir Push Notifications');
-    }
-
-    return token;
-  };
-
-  const updatePresenceForUid = async (uid, isOnline) => {
-    if (!uid) return;
-    try {
-      const userRef = doc(db, 'users', uid);
-      await updateDoc(userRef, {
-        online: isOnline,
-        lastActive: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.log('Error actualizando presencia:', error);
-    }
-  };
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    activeUserRef.current = user;
-  }, [user]);
-
-  useEffect(() => {
-    if (user?.uid) {
-      updatePresenceForUid(user.uid, true);
-    }
-
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      const activeUser = activeUserRef.current;
-      if (!activeUser?.uid) return;
-      if (nextAppState === 'active') {
-        updatePresenceForUid(activeUser.uid, true);
-      } else if (nextAppState.match(/inactive|background/)) {
-        updatePresenceForUid(activeUser.uid, false);
-      }
-    });
-
-    return () => {
-      if (activeUserRef.current?.uid) {
-        updatePresenceForUid(activeUserRef.current.uid, false);
-      }
-      subscription.remove();
-    };
-  }, [user]);
-
-  useEffect(() => {
-    const loadTutorialState = async (authenticatedUser) => {
-      try {
-        const key = authenticatedUser ? userTutorialKey(authenticatedUser.uid) : GUEST_TUTORIAL_KEY;
-        const value = await AsyncStorage.getItem(key);
-        setShowTutorial(value !== 'true');
-        tutorialLoadedForRef.current = authenticatedUser ? authenticatedUser.uid : 'guest';
-      } catch (error) {
-        console.log('Error cargando estado del tutorial:', error);
-        setShowTutorial(true);
-        tutorialLoadedForRef.current = authenticatedUser ? authenticatedUser.uid : 'guest';
-      } finally {
-        setTutorialLoaded(true);
-      }
-    };
-
-    const unsubscribe = onAuthStateChanged(auth, (authenticatedUser) => {
-      setUser(authenticatedUser);
-      setLoading(false);
-
-      loadLanguage(authenticatedUser);
-
+    const unsubscribe = onAuthStateChanged(auth, async (authenticatedUser) => {
       if (authenticatedUser) {
-        registerForPushNotificationsAsync(authenticatedUser.uid);
-      }
+        try {
+          // FORZAR A FIREBASE A ACTUALIZAR EL ESTADO DEL CORREO
+          await authenticatedUser.reload();
 
-      const checkKey = authenticatedUser ? authenticatedUser.uid : 'guest';
-      if (
-        tutorialLoadedForRef.current === null ||
-        (authenticatedUser && tutorialLoadedForRef.current !== authenticatedUser.uid)
-      ) {
-        loadTutorialState(authenticatedUser);
+          // Volvemos a obtener el usuario actualizado después del reload
+          const currentUser = auth.currentUser;
+
+          if (currentUser && currentUser.emailVerified) {
+            setUser(currentUser);
+            await loadLanguage(currentUser);
+          } else {
+            // Si sigue sin estar verificado, limpiamos estado y cerramos sesión remota
+            setUser(null);
+            setLanguageLoaded(true);
+            await signOut(auth);
+          }
+        } catch (error) {
+          console.log("Error al recargar usuario:", error);
+          setUser(null);
+          setLanguageLoaded(true);
+        }
+      } else {
+        setUser(null);
+        setLanguageLoaded(true);
       }
+      setLoading(false);
     });
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log("Notificación recibida:", notification);
-    });
+    checkTutorialStatus();
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log("Usuario tocó la notificación:", response);
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      // Si la app vuelve de estar en segundo plano (cuando el alumno regresa de revisar su correo)
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        if (auth.currentUser) {
+          try {
+            await auth.currentUser.reload();
+            if (auth.currentUser.emailVerified) {
+              setUser(auth.currentUser);
+            }
+          } catch (e) {
+            console.log("Error recargando en background:", e);
+          }
+        }
+        setNavKey((prev) => prev + 1);
+      }
+      appState.current = nextAppState;
     });
 
     return () => {
       unsubscribe();
-      Notifications.removeNotificationSubscription(notificationListener.current);
-      Notifications.removeNotificationSubscription(responseListener.current);
+      subscription.remove();
     };
   }, []);
 
-  useEffect(() => {
-    const handleLanguageChange = () => {
-      setNavKey(i18next.language || 'es');
-    };
-
-    i18next.on('languageChanged', handleLanguageChange);
-    return () => {
-      i18next.off('languageChanged', handleLanguageChange);
-    };
-  }, []);
+  const checkTutorialStatus = async () => {
+    try {
+      const key = user ? userTutorialKey(user.uid) : GUEST_TUTORIAL_KEY;
+      const hasSeen = await AsyncStorage.getItem(key);
+      setShowTutorial(hasSeen !== 'true');
+    } catch (error) {
+      console.log('Error checking tutorial status:', error);
+    } finally {
+      setTutorialLoaded(true);
+    }
+  };
 
   const loadLanguage = async (authenticatedUser) => {
-    setLanguageLoaded(false);
     try {
       await initializeAppLanguage(authenticatedUser);
     } catch (error) {

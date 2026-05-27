@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Activi
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
 import { auth, db } from '../../services/firebaseConfig';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
 import { getAllSkillNames } from '../../utils/tagsList';
@@ -36,15 +36,26 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
     visible: false,
     title: '',
     subtitle: '',
+    isSuccess: false, // Flag para saber si fue un registro exitoso
   });
-  const timerRef = useRef(null);
 
-  const showFeedback = (title, subtitle) => {
-    setFeedbackModal({ visible: true, title, subtitle });
+  const showFeedback = (title, subtitle, isSuccess = false) => {
+    setFeedbackModal({ visible: true, title, subtitle, isSuccess });
   };
 
-  const closeFeedback = () => {
+  const closeFeedback = async () => {
+    const wasSuccess = feedbackModal.isSuccess;
     setFeedbackModal((prev) => ({ ...prev, visible: false }));
+
+    // Si la cuenta se creó con éxito, deslogueamos para que el AppNavigator 
+    // lo regrese a la pantalla de Login y espere la verificación.
+    if (wasSuccess) {
+      try {
+        await signOut(auth);
+      } catch (error) {
+        console.log('Error al cerrar sesión post-registro:', error);
+      }
+    }
   };
 
   const toggleSkill = (skill) => {
@@ -58,9 +69,9 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
   const getFriendlyError = (code) => {
     switch (code) {
       case 'auth/email-already-in-use': return i18next.t('auth.register.errors.emailInUse');
-      case 'auth/invalid-email':        return i18next.t('auth.register.errors.invalidEmail');
-      case 'auth/weak-password':        return i18next.t('auth.register.errors.weakPassword');
-      default:                          return i18next.t('auth.register.errors.default');
+      case 'auth/invalid-email': return i18next.t('auth.register.errors.invalidEmail');
+      case 'auth/weak-password': return i18next.t('auth.register.errors.weakPassword');
+      default: return i18next.t('auth.register.errors.default');
     }
   };
 
@@ -87,6 +98,7 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
 
+      // Guardar información en Firestore
       await setDoc(doc(db, 'users', user.uid), {
         nombre: nombre.trim(),
         email: email.trim(),
@@ -100,7 +112,16 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
         points: 0,
       });
 
-      // Firebase iniciará sesión automáticamente al crear el usuario
+      // Enviar correo de verificación de Firebase
+      await sendEmailVerification(user);
+
+      // Mostramos feedback de éxito indicando que verifique su correo
+      showFeedback(
+        '¡Registro casi listo!',
+        'Hemos enviado un correo de verificación a tu cuenta institucional. Por favor, verifícalo antes de iniciar sesión (revisa también la carpeta de spam).',
+        true
+      );
+
     } catch (error) {
       console.log('Error en Firebase:', error);
       showFeedback('Error de Registro', getFriendlyError(error.code));
@@ -248,7 +269,11 @@ const InformacionRegistroScreen = ({ route, navigation }) => {
         <View style={styles.feedbackOverlay}>
           <View style={styles.feedbackContent}>
             <View style={styles.feedbackIconWrap}>
-              <Ionicons name="close-circle" size={60} color="#EF4444" />
+              <Ionicons
+                name={feedbackModal.isSuccess ? "checkmark-circle" : "close-circle"}
+                size={60}
+                color={feedbackModal.isSuccess ? "#10B981" : "#EF4444"}
+              />
             </View>
             <Text style={styles.feedbackTitle}>{feedbackModal.title}</Text>
             <Text style={styles.feedbackSubtitle}>{feedbackModal.subtitle}</Text>
@@ -366,7 +391,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: '#2563EB',
     borderRadius: 8,
-    height: 50, 
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
   },

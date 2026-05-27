@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
   ScrollView,
   StatusBar,
   Image
@@ -16,7 +16,7 @@ const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -28,7 +28,7 @@ const SignUpScreen = ({ navigation }) => {
     let newErrors = {};
 
     if (!nombre.trim()) newErrors.nombre = 'El nombre es obligatorio.';
-    
+
     if (!email.trim()) {
       newErrors.email = 'El correo es obligatorio.';
     } else if (!email.trim().endsWith('@alumnos.uaq.mx')) {
@@ -72,12 +72,12 @@ const SignUpScreen = ({ navigation }) => {
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <StatusBar barStyle="light-content" backgroundColor="#0B0D14" />
-      
+
       {/* Contenedor del Logo */}
       <View style={styles.logoContainer}>
-        <Image 
-          source={require('../../../assets/images/Logo.png')} 
-          style={{ width: 90, height: 90, resizeMode: 'contain' }} 
+        <Image
+          source={require('../../../assets/images/Logo.png')}
+          style={{ width: 90, height: 90, resizeMode: 'contain' }}
         />
       </View>
 
@@ -97,7 +97,7 @@ const SignUpScreen = ({ navigation }) => {
             value={nombre}
             onChangeText={(text) => {
               setNombre(text);
-              if (errors.nombre) setErrors({...errors, nombre: null});
+              if (errors.nombre) setErrors({ ...errors, nombre: null });
             }}
           />
         </View>
@@ -118,7 +118,7 @@ const SignUpScreen = ({ navigation }) => {
             value={email}
             onChangeText={(text) => {
               setEmail(text);
-              if (errors.email) setErrors({...errors, email: null});
+              if (errors.email) setErrors({ ...errors, email: null });
             }}
           />
         </View>
@@ -138,14 +138,14 @@ const SignUpScreen = ({ navigation }) => {
             value={password}
             onChangeText={(text) => {
               setPassword(text);
-              if (errors.password) setErrors({...errors, password: null});
+              if (errors.password) setErrors({ ...errors, password: null });
             }}
           />
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <MaterialCommunityIcons 
-              name={showPassword ? "eye-off-outline" : "eye-outline"} 
-              size={20} 
-              color="#7E8494" 
+            <MaterialCommunityIcons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#7E8494"
             />
           </TouchableOpacity>
         </View>
@@ -165,14 +165,14 @@ const SignUpScreen = ({ navigation }) => {
             value={confirmPassword}
             onChangeText={(text) => {
               setConfirmPassword(text);
-              if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
+              if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: null });
             }}
           />
           <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-            <MaterialCommunityIcons 
-              name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
-              size={20} 
-              color="#7E8494" 
+            <MaterialCommunityIcons
+              name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#7E8494"
             />
           </TouchableOpacity>
         </View>
@@ -183,23 +183,23 @@ const SignUpScreen = ({ navigation }) => {
       <View style={styles.termsContainer}>
         <TouchableOpacity style={styles.checkbox} onPress={() => {
           setAcceptTerms(!acceptTerms);
-          if (errors.terms) setErrors({...errors, terms: null});
+          if (errors.terms) setErrors({ ...errors, terms: null });
         }}>
-          <MaterialCommunityIcons 
-            name={acceptTerms ? "checkbox-marked" : "checkbox-blank-outline"} 
-            size={22} 
-            color={acceptTerms ? "#2563EB" : "#2D3243"} 
+          <MaterialCommunityIcons
+            name={acceptTerms ? "checkbox-marked" : "checkbox-blank-outline"}
+            size={22}
+            color={acceptTerms ? "#2563EB" : "#2D3243"}
           />
         </TouchableOpacity>
         <Text style={styles.termsText}>
           Acepto los{' '}
-          <Text 
+          <Text
             style={styles.linkText}
             onPress={() => navigation.navigate('TermsScreen')}>
             términos y condiciones
           </Text>
           {' '}y las{' '}
-          <Text 
+          <Text
             style={styles.linkText}
             onPress={() => navigation.navigate('PrivacyScreen')}>
             políticas de privacidad
@@ -213,18 +213,7 @@ const SignUpScreen = ({ navigation }) => {
         <Text style={styles.primaryButtonText}>Crear cuenta</Text>
       </TouchableOpacity>
 
-      {/* Divisor */}
-      <View style={styles.dividerContainer}>
-        <View style={styles.divider} />
-        <Text style={styles.dividerText}>o regístrate con</Text>
-        <View style={styles.divider} />
-      </View>
-
-      {/* Botón Google */}
-      <TouchableOpacity style={styles.googleButton}>
-        <MaterialCommunityIcons name="google" size={20} color="#FFF" style={{ marginRight: 10 }} />
-        <Text style={styles.googleButtonText}>Google</Text>
-      </TouchableOpacity>
+      {/* Se removieron divisores y el botón de registro con Google */}
 
       {/* Link de Login */}
       <View style={styles.footerContainer}>
@@ -240,7 +229,7 @@ const SignUpScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#0B0D14', 
+    backgroundColor: '#0B0D14',
     paddingHorizontal: 24,
     paddingTop: 50,
     paddingBottom: 30,
@@ -274,7 +263,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1C1F2B', 
+    backgroundColor: '#1C1F2B',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#2D3243',
@@ -282,7 +271,7 @@ const styles = StyleSheet.create({
     height: 50,
   },
   inputError: {
-    borderColor: '#EF4444', 
+    borderColor: '#EF4444',
   },
   icon: {
     marginRight: 10,
@@ -313,12 +302,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
-  linkText: {
-    color: '#2563EB',
-    fontWeight: '500',
-  },
   primaryButton: {
-    backgroundColor: '#2563EB', 
+    backgroundColor: '#2563EB',
     borderRadius: 8,
     height: 50,
     justifyContent: 'center',
@@ -331,39 +316,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   linkText: {
-  color: '#2563EB',
-  textDecorationLine: 'underline',
-},
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#2D3243',
-  },
-  dividerText: {
-    color: '#7E8494',
-    paddingHorizontal: 14,
-    fontSize: 13,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    backgroundColor: '#1C1F2B',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2D3243',
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  googleButtonText: {
-    color: '#E5E7EB',
-    fontSize: 15,
-    fontWeight: '500',
+    color: '#2563EB',
+    textDecorationLine: 'underline',
   },
   footerContainer: {
     flexDirection: 'row',
