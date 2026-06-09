@@ -5,14 +5,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 import { ALL_BADGES } from '../../utils/badges';
 
 import i18next from '../../services/staticTL';
 
-import { getSkillByName } from '../../utils/tagsList';
+import { getSkillByName } from '../../constants/tags';
 
 
 const getLevelName = (level) => {

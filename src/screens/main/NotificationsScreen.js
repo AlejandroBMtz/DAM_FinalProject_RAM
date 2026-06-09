@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Activi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch, } from 'firebase/firestore';
 import i18next from '../../services/staticTL';
-import { getSkillByName } from '../../utils/tagsList';
+import { getSkillByName } from '../../constants/tags';
 
 export default function NotificationsScreen() {
   const navigation = useNavigation();

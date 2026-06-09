@@ -1,5 +1,5 @@
 import i18next from './staticTL';
-import { db } from './firebaseConfig';
+import { db } from '../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 const DEFAULT_LANGUAGE = 'es';

@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Image, StatusBar, Modal, Platform, } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { uploadImageToCloudinary } from '../../services/cloudinary';
+import { uploadImageToCloudinary } from '../../config/cloudinary';
 import i18next from '../../services/staticTL';
-import { getAllSkillNames } from '../../utils/tagsList';
+import { getAllSkillNames } from '../../constants/tags';
 
 const CARRERAS = [
   i18next.t("profile.carrera.li"),

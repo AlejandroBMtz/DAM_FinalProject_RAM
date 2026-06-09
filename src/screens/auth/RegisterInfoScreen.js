@@ -2,11 +2,11 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, ActivityIndicator, Modal, Platform, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { createUserWithEmailAndPassword, sendEmailVerification, signOut, deleteUser } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
-import { getAllSkillNames } from '../../utils/tagsList';
+import { getAllSkillNames } from '../../constants/tags';
 
 const CARRERAS = [
   'Licenciatura en Informática',
@@ -20,7 +20,7 @@ const CARRERAS = [
 
 const SEMESTRES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
-const InformacionRegistroScreen = ({ route, navigation }) => {
+const RegisterInfoScreen = ({ route, navigation }) => {
   const { nombre, email, password } = route.params || {};
 
   const [selectedSkills, setSelectedSkills] = useState([]);
@@ -517,4 +517,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default InformacionRegistroScreen;
+export default RegisterInfoScreen;

@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, ScrollView, Image, TextInput } from 'react-native';
 import { collection, query, where, orderBy, or, and, doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
 
-export default function MensajesScreen() {
+export default function MessagesListScreen() {
   const navigation = useNavigation();
   const [conversaciones, setConversaciones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -202,7 +202,7 @@ export default function MensajesScreen() {
                 key={convo.id}
                 style={styles.chatRow}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('MensajeScreen', { conversacionData: convo })}
+                onPress={() => navigation.navigate('MessageScreen', { conversacionData: convo })}
               >
                 {/* Avatar */}
                 <Image

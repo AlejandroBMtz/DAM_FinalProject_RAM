@@ -4,11 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { collection, query, where, orderBy, doc, addDoc, onSnapshot, getDoc, updateDoc, increment, arrayUnion,} from 'firebase/firestore';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { evaluateBadges } from '../../utils/badges';
 import { otorgarPuntosResolucion, penalizarAbandono } from '../../utils/points';
 import * as ImagePicker from 'expo-image-picker';
-import { uploadImageToCloudinary } from '../../services/cloudinary';
+import { uploadImageToCloudinary } from '../../config/cloudinary';
 import i18next from '../../services/staticTL';
 
 // Funciones que leen el diccionario en tiempo de render para respetar el idioma activo
@@ -37,7 +37,7 @@ function useKeyboardHeight() {
   return keyboardHeight;
 }
 
-export default function MensajeScreen() {
+export default function MessageScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const scrollViewRef = useRef(null);
@@ -376,7 +376,7 @@ export default function MensajeScreen() {
 
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('MensajesMain')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.navigate('MessagesList')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Image

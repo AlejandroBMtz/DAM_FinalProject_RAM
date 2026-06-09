@@ -14,7 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
 
 // Importaciones de Firebase
-import { auth } from '../../services/firebaseConfig';
+import { auth } from '../../config/firebase';
 import { signInWithEmailAndPassword, signOut, sendEmailVerification } from 'firebase/auth';
 
 const LoginScreen = ({ navigation }) => {

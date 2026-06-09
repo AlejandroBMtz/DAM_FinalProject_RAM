@@ -61,7 +61,7 @@ const SignUpScreen = ({ navigation }) => {
 
     // Si no hay errores, navegamos a la siguiente pantalla pasando los datos
     if (Object.keys(newErrors).length === 0) {
-      navigation.navigate('InformacionRegistro', {
+      navigation.navigate('RegisterInfo', {
         nombre: nombre.trim(),
         email: email.trim(),
         password: password

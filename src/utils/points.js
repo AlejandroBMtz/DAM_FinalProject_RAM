@@ -1,5 +1,5 @@
 import { doc, updateDoc, increment, getDoc } from 'firebase/firestore';
-import { auth, db } from '../services/firebaseConfig';
+import { auth, db } from '../config/firebase';
 
 // Tablasd de puntos
 

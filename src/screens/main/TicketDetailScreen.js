@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar,
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { doc, getDoc, addDoc, collection, updateDoc, increment } from 'firebase/firestore';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { evaluateBadges } from '../../utils/badges';
 import i18next from '../../services/staticTL';
-import { normalizeSkillName } from '../../utils/tagsList';
+import { normalizeSkillName } from '../../constants/tags';
 
-export default function TicketScreen({ route }) {
+export default function TicketDetailScreen({ route }) {
   const navigation = useNavigation();
   const { ticketData } = route.params || {};
 
@@ -230,7 +230,7 @@ export default function TicketScreen({ route }) {
 
       navigation.popToTop();
       navigation.navigate('Mensajes', {
-        screen: 'MensajeScreen',
+        screen: 'MessageScreen',
         params: { conversacionData: convoData },
       });
     } catch (e) {

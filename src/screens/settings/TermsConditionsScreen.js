@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
 
-export default function TermsScreen({ navigation }) {
+export default function TermsConditionsScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" />
