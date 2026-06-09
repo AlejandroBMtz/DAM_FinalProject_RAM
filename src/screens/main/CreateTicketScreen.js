@@ -14,13 +14,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import i18next from '../../services/staticTL';
 
 // --- Importaciones reales de Firebase ---
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 
 // --- Importar lista de habilidades centralizada ---
-import { getAllSkillNames } from '../../utils/tagsList';
+import { getAllSkillNames } from '../../constants/tags';
 
-export default function Crear({ route, navigation }) {
+export default function CreateTicketScreen({ route, navigation }) {
   const [titulo, setTitulo] = useState('');
   const [desc, setDesc] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);

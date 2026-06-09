@@ -1,5 +1,5 @@
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
-import { auth, db } from '../services/firebaseConfig';
+import { auth, db } from '../config/firebase';
 import i18next from '../services/staticTL';
 
 /**

@@ -13,12 +13,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { collection, query, where, getDocs, orderBy, doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import i18next from '../../services/staticTL';
 
-import { getAllSkillNames, normalizeSkillName } from '../../utils/tagsList';
+import { getAllSkillNames, normalizeSkillName } from '../../constants/tags';
 
-export default function FeedScreen() {
+export default function HomeScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState('Todas');
@@ -182,7 +182,7 @@ export default function FeedScreen() {
     <TouchableOpacity 
       style={styles.card}
       activeOpacity={0.7}
-      onPress={() => navigation.navigate('TicketScreen', { ticketData: item })}
+      onPress={() => navigation.navigate('TicketDetailScreen', { ticketData: item })}
     >
       <View style={styles.cardHeader}>
         <View style={styles.priorityBadge}>

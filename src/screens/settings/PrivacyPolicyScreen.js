@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
 
-export default function PrivacyScreen({ navigation }) {
+export default function PrivacyPolicyScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="light-content" />

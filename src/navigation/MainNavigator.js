@@ -8,21 +8,21 @@ import { Ionicons } from '@expo/vector-icons';
 // Importaciones de tus pantallas principales
 import HomeScreen from '../screens/main/HomeScreen';
 import MyTicketsScreen from '../screens/main/MyTicketsScreen';
-import CreateScreen from '../screens/main/CreateScreen';
-import MessajesScreen from '../screens/main/MessajesScreen';
-import MensajeScreen from '../screens/main/MensajeScreen';
+import CreateTicketScreen from '../screens/main/CreateTicketScreen';
+import MessagesListScreen from '../screens/main/MessagesListScreen';
+import MessageScreen from '../screens/main/MessageScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 
 // Importar las pantallas secundarias
 import NotificationsScreen from '../screens/main/NotificationsScreen';
-import TicketScreen from '../screens/main/TicketScreen';
-import EditarTicketScreen from '../screens/main/EditTicketScreen';
+import TicketDetailScreen from '../screens/main/TicketDetailScreen';
+import EditTicketScreen from '../screens/main/EditTicketScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditProfileScreen from '../screens/settings/EditProfileScreen';
 import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 import ChangeLanguageScreen from '../screens/settings/ChangeLanguageScreen';
-import TermsScreen from '../screens/settings/termsConditions';
-import PrivacyScreen from '../screens/settings/politicasPrivacidad';
+import TermsConditionsScreen from '../screens/settings/TermsConditionsScreen';
+import PrivacyPolicyScreen from '../screens/settings/PrivacyPolicyScreen';
 
 
 const Tab = createBottomTabNavigator();
@@ -34,9 +34,9 @@ const HIDDEN_ON = new Set([
   'ChangePasswordScreen',
   'ChangeLanguageScreen',
   'SettingsScreen',
-  'EditarTicketScreen',
-  'TicketScreen',
-  'MensajeScreen',
+  'EditTicketScreen',
+  'TicketDetailScreen',
+  'MessageScreen',
   'Notifications',
   'TermsScreen',
   'PrivacyScreen',
@@ -65,7 +65,7 @@ function HomeStackNavigator() {
       <Stack.Screen name="HomeMain" component={HomeScreen} />
       <Stack.Screen name="myTicket" component={MyTicketsScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
-      <Stack.Screen name="TicketScreen" component={TicketScreen} />
+      <Stack.Screen name="TicketDetailScreen" component={TicketDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -73,8 +73,8 @@ function HomeStackNavigator() {
 function MessagesStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MensajesMain" component={MessajesScreen} />
-      <Stack.Screen name="MensajeScreen" component={MensajeScreen} />
+      <Stack.Screen name="MessagesList" component={MessagesListScreen} />
+      <Stack.Screen name="MessageScreen" component={MessageScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
@@ -84,8 +84,8 @@ function MyTicketsStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MyTicketsMain" component={MyTicketsScreen} />
-      <Stack.Screen name="EditarTicketScreen" component={EditarTicketScreen} />
-      <Stack.Screen name="CrearTicketScreen" component={CreateScreen} />
+      <Stack.Screen name="EditTicketScreen" component={EditTicketScreen} />
+      <Stack.Screen name="CreateTicketScreen" component={CreateTicketScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
@@ -94,7 +94,7 @@ function MyTicketsStackNavigator() {
 function AgregarStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="AgregarMain" component={CreateScreen} />
+      <Stack.Screen name="AgregarMain" component={CreateTicketScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
@@ -108,8 +108,8 @@ function ProfileStackNavigator() {
       <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
       <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
       <Stack.Screen name="ChangeLanguageScreen" component={ChangeLanguageScreen} />
-      <Stack.Screen name="TermsScreen" component={TermsScreen} />
-      <Stack.Screen name="PrivacyScreen" component={PrivacyScreen} />
+      <Stack.Screen name="TermsScreen" component={TermsConditionsScreen} />
+      <Stack.Screen name="PrivacyScreen" component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 }

@@ -8,10 +8,10 @@ import {
   collection, query, where, getDocs, orderBy,
   deleteDoc, doc, getDoc, onSnapshot, updateDoc, Timestamp
 } from 'firebase/firestore';
-import { auth, db } from '../../services/firebaseConfig';
+import { auth, db } from '../../config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 import i18next from '../../services/staticTL';
-import { normalizeSkillName } from '../../utils/tagsList';
+import { normalizeSkillName } from '../../constants/tags';
 import { penalizarAbandono } from '../../utils/points';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -462,7 +462,7 @@ export default function MyTicketsScreen() {
           const otherUser = await fetchUserData(otherUid);
 
           navigation.navigate('Mensajes', {
-            screen: 'MensajeScreen',
+            screen: 'MessageScreen',
             params: {
               conversacionData: {
                 id: convSnap.id,
@@ -489,7 +489,7 @@ export default function MyTicketsScreen() {
         const otherUser = await fetchUserData(otherUid);
 
         navigation.navigate('Mensajes', {
-          screen: 'MensajeScreen',
+          screen: 'MessageScreen',
           params: {
             conversacionData: {
               id: docSnap.id,
@@ -601,7 +601,7 @@ export default function MyTicketsScreen() {
               <>
                 <TouchableOpacity
                   style={styles.actionBtnLeft}
-                  onPress={() => navigation.navigate('EditarTicketScreen', { ticketData: ticket })}
+                  onPress={() => navigation.navigate('EditTicketScreen', { ticketData: ticket })}
                 >
                   <Text style={styles.actionBtnTextBlue}>{i18next.t("tickets.editar")}</Text>
                 </TouchableOpacity>

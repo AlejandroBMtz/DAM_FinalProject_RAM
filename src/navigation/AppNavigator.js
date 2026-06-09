@@ -5,13 +5,13 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { updateDoc, doc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, db } from '../services/firebaseConfig';
+import { auth, db } from '../config/firebase';
 import i18next from '../services/staticTL';
 import { initializeAppLanguage } from '../services/startup';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
-import TutorialScreen from '../screens/tutoSlides/TutorialScreen';
+import TutorialScreen from '../screens/tutorial/TutorialScreen';
 
 const Stack = createNativeStackNavigator();
 const GUEST_TUTORIAL_KEY = '@hasSeenTutorial_guest';

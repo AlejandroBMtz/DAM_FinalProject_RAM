@@ -13,12 +13,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 // --- Importaciones reales de Firebase ---
-import { db } from '../../services/firebaseConfig';
+import { db } from '../../config/firebase';
 import { doc, updateDoc } from 'firebase/firestore'; 
 
 import i18next from '../../services/staticTL';
 
-import { getAllSkillNames, normalizeSkillName } from '../../utils/tagsList';
+import { getAllSkillNames, normalizeSkillName } from '../../constants/tags';
 
 export default function EditTicketScreen({ route, navigation }) {
   // Recibimos los datos del ticket a editar mediante los parámetros de navegación
